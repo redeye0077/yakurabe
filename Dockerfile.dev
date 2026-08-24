@@ -1,0 +1,18 @@
+# ============================================================
+# 開発用Dockerfile(矢比べ / yakurabe)
+# ホットリロードを効かせるため、ソースはdocker-compose側でボリュームマウントする前提
+# 本番用は別途 Dockerfile(マルチステージビルド)を用意する
+# ============================================================
+FROM node:20-slim
+
+WORKDIR /app
+
+# 依存関係だけ先にコピーしてキャッシュを効かせる
+COPY package.json package-lock.json* ./
+RUN npm install
+
+# 残りのソースはdocker-compose.ymlのvolumesでマウントするのでCOPYしない
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]
