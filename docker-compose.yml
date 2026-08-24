@@ -1,0 +1,40 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+      - "5555:5555" # Prisma Studio用
+    volumes:
+      - .:/app
+      - /app/node_modules # ホスト側のnode_modulesで上書きしないようにする
+      - /app/.next # ビルドキャッシュも同様
+    env_file:
+      - .env
+    environment:
+      # コンテナ内からはサービス名 "db" で名前解決できる
+      DATABASE_URL: "mysql://root:root@db:3306/yakurabe"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: npm run dev
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: yakurabe
+    ports:
+      - "3306:3306" # ホストからPrisma Studio等で直接繋ぎたい場合用
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db_data:
