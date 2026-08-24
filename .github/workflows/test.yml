@@ -15,11 +15,14 @@ jobs:
       - name: Node.jsをセットアップ
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
       - name: 依存関係をインストール
         run: npm ci
+
+      - name: Next.jsの型を生成
+        run: npx next typegen
 
       - name: Lintを実行
         run: npm run lint
