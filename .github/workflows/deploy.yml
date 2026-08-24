@@ -1,0 +1,56 @@
+name: Deploy to AWS Lightsail
+
+# mainブランチ(= リリースブランチ)にマージされたタイミングで本番デプロイする。
+# 前提: AWS Lightsailのコンテナサービスが作成済みであること(現時点では未作成のため、
+# 以下のGitHub Secretsを設定してから有効化すること)
+#   - AWS_ACCESS_KEY_ID
+#   - AWS_SECRET_ACCESS_KEY
+#   - AWS_REGION            (例: ap-northeast-1)
+#   - LIGHTSAIL_SERVICE_NAME (Lightsailコンテナサービス名)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: AWS認証情報を設定
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: 本番用Dockerイメージをビルド
+        run: docker build -t yakurabe:${{ github.sha }} -f Dockerfile .
+
+      - name: lightsailctlをインストール
+        run: |
+          sudo curl "https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl" \
+            -o "/usr/local/bin/lightsailctl"
+          sudo chmod +x /usr/local/bin/lightsailctl
+
+      - name: イメージをLightsailにプッシュ
+        id: push
+        run: |
+          aws lightsail push-container-image \
+            --service-name ${{ secrets.LIGHTSAIL_SERVICE_NAME }} \
+            --label yakurabe \
+            --image yakurabe:${{ github.sha }}
+
+      # 上のコマンドが出力するイメージ参照(:yakurabe.xx)を使って
+      # deployment.jsonのimageを差し替えてからcreate-deploymentを叩く必要がある。
+      # 実際にLightsailを作成したタイミングで、containers/publicEndpointの定義を
+      # deployment.json として用意し、以下のコマンドを追加する。
+      #
+      # - name: 新しいデプロイを作成
+      #   run: |
+      #     aws lightsail create-container-service-deployment \
+      #       --service-name ${{ secrets.LIGHTSAIL_SERVICE_NAME }} \
+      #       --cli-input-json file://deployment.json
