@@ -1,0 +1,35 @@
+services:
+  app:
+    image: ghcr.io/redeye0077/yakurabe:latest
+    restart: always
+    ports:
+      - "80:3000"
+    env_file:
+      - .env.production
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - yakurabe-net
+
+  mysql:
+    image: mysql:8.0
+    restart: always
+    env_file:
+      - .env.production
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/conf.d:/etc/mysql/conf.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - yakurabe-net
+
+volumes:
+  mysql-data:
+
+networks:
+  yakurabe-net:
