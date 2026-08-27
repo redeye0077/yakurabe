@@ -1,0 +1,34 @@
+name: Test
+
+on:
+  pull_request:
+    branches: [develop, main] # feature -> develop のPR、develop -> main のリリースPR両方でチェック
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.jsをセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: 依存関係をインストール
+        run: npm ci
+
+      - name: Next.jsの型を生成
+        run: npx next typegen
+
+      - name: Lintを実行
+        run: npm run lint
+
+      - name: 型チェックを実行
+        run: npx tsc --noEmit
+
+      - name: テストを実行
+        run: npm run test
