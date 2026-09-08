@@ -21,6 +21,9 @@ jobs:
       - name: 依存関係をインストール
         run: npm ci
 
+      - name: Prisma Clientを生成
+        run: npx prisma generate
+
       - name: Next.jsの型を生成
         run: npx next typegen
 
