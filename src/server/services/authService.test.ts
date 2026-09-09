@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { User } from "@prisma/client";
 import { authService } from "@/server/services/authService";
 import { userRepository } from "@/server/repositories/userRepository";
 import { hashPassword, verifyPassword } from "@/lib/password";
@@ -20,6 +21,22 @@ const mockedCreate = vi.mocked(userRepository.create);
 const mockedHash = vi.mocked(hashPassword);
 const mockedVerify = vi.mocked(verifyPassword);
 
+function createMockUser(overrides: Partial<User> = {}): User {
+    return {
+        id: "id-1",
+        username: "testuser",
+        email: "test@example.com",
+        passwordHash: "hashed",
+        avatarUrl: null,
+        bio: null,
+        dartsCareer: null,
+        highestRating: null,
+        createdAt: new Date("2026-01-01"),
+        updatedAt: new Date("2026-01-01"),
+        ...overrides,
+    };
+}
+
 beforeEach(() => {
     vi.clearAllMocks();
 });
@@ -32,12 +49,9 @@ describe("authService.register", () => {
     };
 
     it("既存ユーザーがいる場合はエラーを投げる", async () => {
-        mockedFindByEmail.mockResolvedValue({
-            id: "existing-id",
-            email: input.email,
-            username: "existing",
-            passwordHash: "already-hashed",
-        });
+        mockedFindByEmail.mockResolvedValue(
+            createMockUser({ id: "existing-id", email: input.email, username: "existing" })
+        );
 
         await expect(authService.register(input)).rejects.toThrow(
             "このメールアドレスは既に登録されています"
@@ -50,12 +64,14 @@ describe("authService.register", () => {
     it("重複がなければハッシュ化してユーザーを作成し、passwordHashを含まない値を返す", async () => {
         mockedFindByEmail.mockResolvedValue(null);
         mockedHash.mockResolvedValue("hashed-password");
-        mockedCreate.mockResolvedValue({
-            id: "new-id",
-            email: input.email,
-            username: input.username,
-            passwordHash: "hashed-password",
-        });
+        mockedCreate.mockResolvedValue(
+            createMockUser({
+                id: "new-id",
+                email: input.email,
+                username: input.username,
+                passwordHash: "hashed-password",
+            })
+        );
 
         const result = await authService.register(input);
 
@@ -88,12 +104,7 @@ describe("authService.validateCredentials", () => {
     });
 
     it("パスワードが一致しない場合はnullを返す", async () => {
-        mockedFindByEmail.mockResolvedValue({
-            id: "id-1",
-            email: "test@example.com",
-            username: "testuser",
-            passwordHash: "hashed",
-        });
+        mockedFindByEmail.mockResolvedValue(createMockUser());
         mockedVerify.mockResolvedValue(false);
 
         const result = await authService.validateCredentials(
@@ -105,12 +116,7 @@ describe("authService.validateCredentials", () => {
     });
 
     it("パスワードが一致する場合はpasswordHashを除いたユーザー情報を返す", async () => {
-        mockedFindByEmail.mockResolvedValue({
-            id: "id-1",
-            email: "test@example.com",
-            username: "testuser",
-            passwordHash: "hashed",
-        });
+        mockedFindByEmail.mockResolvedValue(createMockUser());
         mockedVerify.mockResolvedValue(true);
 
         const result = await authService.validateCredentials(
