@@ -13,6 +13,7 @@ const adapter = new PrismaMariaDb({
   password: process.env.DATABASE_PASSWORD ?? "",
   database: process.env.DATABASE_NAME ?? "yakurabe",
   connectionLimit: 5,
+  ssl: false,
 });
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
