@@ -26,6 +26,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: yakurabe
+    command: --default-authentication-plugin=mysql_native_password
     ports:
       - "3306:3306" # ホストからPrisma Studio等で直接繋ぎたい場合用
     volumes:
