@@ -7,16 +7,13 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 const adapter = new PrismaMariaDb({
-  host: "db",
+  host: process.env.DATABASE_HOST ?? "mysql",
   port: 3306,
-  user: "root",
-  password: "root",
-  database: "yakurabe",
+  user: process.env.DATABASE_USER ?? "yakurabe_app",
+  password: process.env.DATABASE_PASSWORD ?? "",
+  database: process.env.DATABASE_NAME ?? "yakurabe",
   connectionLimit: 5,
 });
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+globalForPrisma.prisma = prisma;
