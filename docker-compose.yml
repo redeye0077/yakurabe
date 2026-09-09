@@ -15,6 +15,10 @@ services:
     environment:
       # コンテナ内からはサービス名 "db" で名前解決できる
       DATABASE_URL: "mysql://root:root@db:3306/yakurabe"
+      DATABASE_HOST: "db"
+      DATABASE_USER: "root"
+      DATABASE_PASSWORD: "root"
+      DATABASE_NAME: "yakurabe"
     depends_on:
       db:
         condition: service_healthy
@@ -32,7 +36,7 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot" ]
       interval: 5s
       timeout: 5s
       retries: 10
