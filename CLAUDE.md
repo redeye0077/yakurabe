@@ -10,19 +10,25 @@
 
 主な機能:
 - セッティングの一覧・キーワード検索・詳細閲覧
-- セッティングの新規登録・編集・削除(バレル/シャフト/フライト/チップを選択、重量・価格は自動計算、画像1枚必須、特徴・使用感必須、アピールポイント単一選択・必須、おすすめレベル単一選択・任意)
+- セッティングの新規登録・削除(バレル/シャフト/フライト/チップを選択、重量・価格は自動計算、画像1枚必須、特徴・使用感必須、アピールポイント単一選択・必須)
 - セッティング詳細画面内での商品情報表示(モーダル/アコーディオンで展開。独立した商品詳細ページ・商品一覧ページは無い。購入ボタン(`hiveUrl`)はこのモーダル/アコーディオン内に実装する)
-- お気に入り
-- マイページ(自分の投稿、お気に入り、プロフィール編集)
+- マイページ(自分の投稿一覧のみ)
 
 ### MVPスコープ外(Phase 2以降に対応予定)
 
 以下は初回リリースでは実装しない。関連コードを勝手に実装しないこと。
+MVPの期日(paizaBランク対策と並行するための開発期間短縮)を優先するための一時的な除外であり、
+リリース後に時間の余裕ができた場合や転職活動期間中に、ポートフォリオの見せ場として追加実装する
+可能性がある。ただし現時点では着手しない。
 
 - 評価・レビュー(星評価)機能 ※UI上の星評価・レビュー件数表示も含めて実装しない(schemaにratingAvg/ratingCountは無い)
 - OAuthログイン(Google/Apple) ※メール+パスワードのみ対応
 - フォロー/フォロワー機能
-- 複数画像アップロード ※1商品/1セッティングにつき画像1枚のみ
+- お気に入り機能 ※Favoriteテーブル自体を作らない。マイページにお気に入り一覧タブも無い
+- セッティングの編集機能 ※新規登録・削除のみ実装する。間違えた場合は削除して再登録する運用とする
+- プロフィール編集機能 ※新規登録時に入力した情報を表示するのみで、変更UIは実装しない
+- `RecommendedLevel`(おすすめレベル) ※Enum自体を作らない。`Tag`(アピールポイント)のみで表現する
+- 複数画像アップロード ※1商品/1セッティングにつき画像1枚のみ(必須)
 - 詳細な絞り込み検索(重量・価格帯・メーカー等) ※キーワード検索のみ
 - 商品(バレル/シャフト/フライト/チップ)の独立した詳細ページ・一覧ページ ※商品情報はセッティング詳細画面内のモーダル/アコーディオンで表示する。`/products/[id]`のような専用ルートは作らない
 - 「この商品を使った他のセッティング一覧」機能 ※商品detailページが無いため、その遷移先も無し。将来的に商品ページを復活させる場合に合わせて検討する
@@ -38,38 +44,8 @@
 | フォーム | React Hook Form + Zod |
 | データフェッチ | TanStack Query (React Query) |
 | DB | MySQL |
-| ORM | Prisma (v7以降。接続URLは`schema.prisma`ではなく`prisma.config.ts`で管理する) |
+| ORM | Prisma |
 | 認証 | NextAuth.js (Credentials Provider、メール+パスワードのみ。MVPではOAuthは未対応) |
-
-## 開発環境(Docker)
-
-開発環境はDocker Compose管理。**Next.js(app)・MySQL(db)ともにコンテナで動く**。
-ホストマシンに直接Node.js/MySQLをインストールする必要はない。
-
-- アプリ起動: `docker compose up`(初回や依存関係変更時は `--build` を付ける)
-- コンテナ内でコマンドを実行する場合は必ず `docker compose exec app <コマンド>` の形を使う
-  (コンテナを経由せずホスト側で直接 `npx prisma ...` 等を実行しない)
-- コンテナ間の名前解決は `db`(サービス名)を使う。`DATABASE_URL`は
-  `docker-compose.yml`の`environment`で`mysql://root:root@db:3306/yakurabe`に
-  上書きされる。ホストの`.env`は`localhost`版のままでよい
-- Prismaの接続設定は`prisma.config.ts`(リポジトリ直下)に集約されている。
-  `schema.prisma`の`datasource`ブロックに`url`を書かない(Prisma 7の仕様)
-
-## Gitブランチ運用
-
-```
-feature/xxx  (developから作成。実装作業はここで行う)
-   ↓ PR
-develop      (作業の集約ブランチ)
-   ↓ PR
-main         (= リリースブランチ。マージすると自動でAWS Lightsailにデプロイされる)
-```
-
-- 実装は必ず`feature/xxx`ブランチで行い、`develop`に直接コミットしない
-- `develop`への PRでは GitHub Actions(`test.yml`)がLint・型チェック・テストを実行する。
-  CIが通らない状態でのマージは避ける
-- `main`はリリース専用ブランチ。ここへのマージがそのまま本番デプロイに直結するため、
-  `develop`で十分動作確認できたタイミングでのみPRを作成する
 
 ## アーキテクチャ: レイヤードアーキテクチャ
 
@@ -110,11 +86,12 @@ src/
     (auth)/                     # 認証関連ページ (ログイン, 新規登録)
     mypage/                     # マイページ配下
     api/
-      products/route.ts         # Controller
-      products/[id]/route.ts
+      barrels/route.ts           # Controller(検索付きセレクト用の一覧取得のみ)
+      shafts/route.ts
+      flights/route.ts
+      tips/route.ts
       settings/route.ts
       settings/[id]/route.ts
-      favorites/route.ts
       ...
   server/
     controllers/                # Controllerロジックを分離する場合はここに置き、
@@ -125,7 +102,6 @@ src/
       flight.service.ts
       tip.service.ts
       setting.service.ts
-      favorite.service.ts
       user.service.ts
     repositories/
       barrel.repository.ts
@@ -133,7 +109,6 @@ src/
       flight.repository.ts
       tip.repository.ts
       setting.repository.ts
-      favorite.repository.ts
       user.repository.ts
     dto/                        # Service/Controller間でやり取りする型定義
   components/
@@ -158,13 +133,11 @@ src/
 prisma/
   schema.prisma
   seed.ts
-prisma.config.ts                # Prisma 7の接続設定(datasource url、migrationsパス等)
 ```
 
 ## 命名規則
 
 - ファイル名: kebab-case (例: `setting-card.tsx`)、ただしコンポーネント本体はPascalCaseでexport
-- モデル名・テーブル名: 単数形で統一する(例: `Barrel`, `Shaft`, `Flight`, `Tip`。`Barrels`のような複数形にしない)
 - Service/Repositoryのクラス(または関数群): `対象名 + Service` / `対象名 + Repository`
   (例: `SettingService`, `SettingRepository`)
 - Zodスキーマ: `対象名 + Schema` (例: `createSettingSchema`)
@@ -180,10 +153,7 @@ prisma.config.ts                # Prisma 7の接続設定(datasource url、migra
   - Repository層: Prismaのエラーはそのままthrowしてよい
   - Service層: ビジネスルール違反は独自のエラークラス(例: `NotFoundError`, `ValidationError`)をthrowする
   - Controller層: 独自エラークラスをcatchしてHTTPステータスにマッピングする
-- `Setting.favoriteCount`はお気に入りの追加/削除のたびにFavoriteテーブルの作成・削除と
-  カウントの増減を`prisma.$transaction`で同時に行い、整合性を保つこと(片方だけ成功して
-  ズレる状態を作らない)
-- セッティング登録・編集フォームでのバレル/シャフト/フライト/チップ選択は、単純な`<select>`
+- セッティング登録フォームでのバレル/シャフト/フライト/チップ選択は、単純な`<select>`
   (プルダウン)ではなく、名前で絞り込める検索付きセレクト(shadcnの`Command` +
   `Popover`によるComboboxパターン)を使うこと。初期表示(未入力時)は候補を出さず空の状態
   にする。候補が0件の場合は「該当する商品が見つかりません」とだけ表示し、商品追加の
@@ -196,27 +166,23 @@ prisma.config.ts                # Prisma 7の接続設定(datasource url、migra
 1. 新しい機能を追加するときは、既存の`barrel.repository.ts` / `barrel.service.ts` /
    `src/app/api/barrels/route.ts` のパターンを踏襲すること。独自の構成を勝手に作らない
 2. Prismaスキーマを変更する場合は、変更内容を先に提示してから
-   `docker compose exec app npx prisma migrate dev --name <変更内容>` を実行すること。
-   人間の確認なしに勝手にマイグレーションを実行しない
+   `npx prisma migrate dev --name <変更内容>` を実行すること。人間の確認なしに勝手に
+   マイグレーションを実行しない
 3. 大きめの機能(例: セッティング登録フォーム全体)を実装する前に、まず実装方針(関わる
    ファイル一覧、データフロー)を箇条書きで提示し、確認を取ってから実装に入ること
 4. 1つのタスクは1機能・1画面単位程度に留める。複数機能にまたがる大規模な変更を一度に
    行わない
-5. 実装は`feature/xxx`ブランチ上で行うこと。`develop`・`main`に直接コミットしない
 
 ## コマンド
 
-コンテナ内で実行するコマンドは、必ず`docker compose exec app`を先頭に付けること。
-
 ```bash
-docker compose up                               # 開発環境起動(app + db)
-docker compose exec app npm run build           # ビルド
-docker compose exec app npx prisma migrate dev  # マイグレーション実行(開発環境)
-docker compose exec app npx prisma studio       # DBをGUIで確認
-docker compose exec app npx prisma db seed      # シードデータ投入
-docker compose exec app npm run lint            # ESLint
-docker compose exec app npx tsc --noEmit        # 型チェック
-docker compose exec app npm run test            # テスト実行(Vitest)
+npm run dev              # 開発サーバー起動
+npm run build             # ビルド
+npx prisma migrate dev    # マイグレーション実行(開発環境)
+npx prisma studio         # DBをGUIで確認
+npx prisma db seed        # シードデータ投入
+npm run lint               # ESLint
+npm run typecheck          # tsc --noEmit
 ```
 
 ## やってはいけないこと
@@ -225,5 +191,3 @@ docker compose exec app npm run test            # テスト実行(Vitest)
 - Service層のロジックが薄いからといってRepositoryを飛ばしてController→Prismaを直接呼ぶ
 - shadcnの`components/ui`配下のファイルを直接改変する(必要ならラップする別コンポーネントを作る)
 - 確認なしにPrismaスキーマのフィールド削除・型変更を含むマイグレーションを実行する
-- `schema.prisma`の`datasource`ブロックに`url`を書く(Prisma 7では非対応。接続設定は`prisma.config.ts`側)
-- `develop`・`main`ブランチに直接コミットする
