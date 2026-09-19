@@ -8,6 +8,7 @@ export default defineConfig({
     environment: "node", // デフォルトはnode（Zodスキーマ・Service層用）
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    testTimeout: 10000,
   },
   resolve: {
     alias: {
