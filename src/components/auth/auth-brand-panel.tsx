@@ -33,7 +33,7 @@ export function AuthBrandPanel() {
       </div>
 
       <div className="flex flex-col gap-5">
-        <p className="font-heading text-[32px] leading-[1.6] font-medium">
+        <p className="font-heading text-[28px] leading-[1.6] font-medium">
           自分だけのセッティングを、
           <br />
           もっと自由に比べよう。
