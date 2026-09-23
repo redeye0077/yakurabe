@@ -7,7 +7,7 @@ export const authConfig: NextAuthConfig = {
   },
   providers: [], // Edge Runtimeでは使わないので空でOK(型合わせのため)
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
+    authorized({ auth }) {
       const isLoggedIn = !!auth?.user;
       // ここで保護対象パスかどうかを判定する
       // matcherで絞っているので、middlewareに到達した時点で「保護対象パス」は確定している
