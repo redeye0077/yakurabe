@@ -135,6 +135,12 @@ prisma/
   seed.ts
 ```
 
+### コンポーネントの配置
+- `components/common/` … 複数ページで使う共通部品(ヘッダー、DartMark など)
+- `components/features/<ドメイン>/` … ドメイン単位で再利用する部品(例: `setting/setting-card.tsx`)
+- `components/features/<ページ>/` … 特定ページ専用のUI(例: `top/hero-section.tsx`)
+- `mocks/` … Service層実装前の仮データ。実装後に削除する
+
 ## 命名規則
 
 - ファイル名: kebab-case (例: `setting-card.tsx`)、ただしコンポーネント本体はPascalCaseでexport
