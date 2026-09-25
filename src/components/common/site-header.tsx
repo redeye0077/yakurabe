@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { signOut } from "@/lib/auth";
 import { DartMark } from "@/components/common/dart-mark";
+import { MobileNav, type NavLink } from "@/components/common/mobile-nav";
 
-const navLinks = [
+const navLinks: NavLink[] = [
   { href: "/settings", label: "セッティング一覧" },
   { href: "/settings/new", label: "新規投稿" },
   { href: "/mypage", label: "マイページ" },
@@ -66,6 +67,7 @@ export function SiteHeader({ isLoggedIn }: SiteHeaderProps) {
             </Link>
           </>
         )}
+        <MobileNav navLinks={navLinks} />
       </div>
     </header>
   );
