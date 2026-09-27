@@ -19,10 +19,26 @@ services:
       DATABASE_USER: "root"
       DATABASE_PASSWORD: "root"
       DATABASE_NAME: "yakurabe"
+      # 開発環境ではMailpitにSMTPで送信する(実際には外部に配送されない)
+      MAIL_DRIVER: "smtp"
+      MAIL_FROM: "no-reply@yakurabe.local"
+      SMTP_HOST: "mailpit"
+      SMTP_PORT: "1025"
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     command: npm run dev
+
+  # 開発用のメール受信サーバー。送信されたメールは http://localhost:8025 で確認できる
+  # 本番(docker-compose.prod.yml)には含めない
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
 
   db:
     image: mysql:8.0
