@@ -74,6 +74,7 @@ Repository (Prismaを直接操作するのはここだけ)
 - **Repository** (`src/server/repositories/*.repository.ts`)
   - Prisma Clientを直接操作するのはこの層のみ
   - 単純なCRUDメソッドを提供する(findById, findMany, create, update, delete等)
+  - 複数テーブルの整合性が必要な更新は、Repository内でトランザクション(`$transaction`)を使ってよい
   - ビジネスロジックを書かない
 
 ### ディレクトリ構成
