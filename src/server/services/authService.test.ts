@@ -26,6 +26,7 @@ function createMockUser(overrides: Partial<User> = {}): User {
         id: "id-1",
         username: "testuser",
         email: "test@example.com",
+        emailVerified: null,
         passwordHash: "hashed",
         avatarUrl: null,
         bio: null,
