@@ -4,6 +4,9 @@ import {
   ExpiredVerificationTokenError,
   InvalidVerificationTokenError,
 } from "@/server/errors/email-verification.error";
+import { loadAppConfig } from "@/server/config/app-config";
+import { getMailSender } from "@/server/mail/get-mail-sender";
+import { buildVerificationEmail } from "@/server/mail/templates/verification-email";
 
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -27,6 +30,30 @@ export const EmailVerificationService = {
     });
 
     return token;
+  },
+
+  /**
+   * トークンを発行し、認証リンク付きの確認メールを送信する。
+   * 失敗時はthrowするので、呼び出し側でどう扱うか(登録を成功扱いにする等)を決める。
+   */
+  async sendVerificationEmail(user: {
+    userId: string;
+    email: string;
+    username: string;
+  }): Promise<void> {
+    const { APP_URL } = loadAppConfig();
+    const token = await EmailVerificationService.issueToken(user.userId);
+
+    const verificationUrl = new URL("/verify", APP_URL);
+    verificationUrl.searchParams.set("token", token);
+
+    await getMailSender().send(
+      buildVerificationEmail({
+        to: user.email,
+        username: user.username,
+        verificationUrl: verificationUrl.toString(),
+      }),
+    );
   },
 
   /**

@@ -3,6 +3,7 @@ import type { User } from "@prisma/client";
 import { authService } from "@/server/services/authService";
 import { userRepository } from "@/server/repositories/userRepository";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { EmailVerificationService } from "@/server/services/email-verification.service";
 
 vi.mock("@/server/repositories/userRepository", () => ({
     userRepository: {
@@ -16,10 +17,17 @@ vi.mock("@/lib/password", () => ({
     verifyPassword: vi.fn(),
 }));
 
+vi.mock("@/server/services/email-verification.service", () => ({
+    EmailVerificationService: {
+        sendVerificationEmail: vi.fn(),
+    },
+}));
+
 const mockedFindByEmail = vi.mocked(userRepository.findByEmail);
 const mockedCreate = vi.mocked(userRepository.create);
 const mockedHash = vi.mocked(hashPassword);
 const mockedVerify = vi.mocked(verifyPassword);
+const mockedSendVerificationEmail = vi.mocked(EmailVerificationService.sendVerificationEmail);
 
 function createMockUser(overrides: Partial<User> = {}): User {
     return {
@@ -88,6 +96,41 @@ describe("authService.register", () => {
             username: input.username,
         });
         expect(result).not.toHaveProperty("passwordHash");
+    });
+
+    describe("確認メールの送信", () => {
+        beforeEach(() => {
+            mockedFindByEmail.mockResolvedValue(null);
+            mockedHash.mockResolvedValue("hashed-password");
+            mockedCreate.mockResolvedValue(
+                createMockUser({ id: "new-id", email: input.email, username: input.username })
+            );
+        });
+
+        it("ユーザー作成後に確認メールを送信する", async () => {
+            await authService.register(input);
+
+            expect(mockedSendVerificationEmail).toHaveBeenCalledWith({
+                userId: "new-id",
+                email: input.email,
+                username: input.username,
+            });
+        });
+
+        it("送信に失敗しても登録は成功として結果を返し、エラーをログに残す", async () => {
+            const error = new Error("smtp down");
+            mockedSendVerificationEmail.mockRejectedValue(error);
+            const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+            const result = await authService.register(input);
+
+            expect(result).toEqual({ id: "new-id", email: input.email, username: input.username });
+            expect(consoleError).toHaveBeenCalledWith(
+                "[auth] 確認メールの送信に失敗しました",
+                { userId: "new-id", error }
+            );
+            consoleError.mockRestore();
+        });
     });
 });
 

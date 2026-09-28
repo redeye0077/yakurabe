@@ -19,6 +19,8 @@ services:
       DATABASE_USER: "root"
       DATABASE_PASSWORD: "root"
       DATABASE_NAME: "yakurabe"
+      # メール内の認証リンク等のベースURL
+      APP_URL: "http://localhost:3000"
       # 開発環境ではMailpitにSMTPで送信する(実際には外部に配送されない)
       MAIL_DRIVER: "smtp"
       MAIL_FROM: "no-reply@yakurabe.local"
