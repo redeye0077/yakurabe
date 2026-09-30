@@ -11,7 +11,7 @@ export type AppConfig = z.infer<typeof appConfigSchema>;
 
 /**
  * 環境変数を検証してアプリ設定を返す。
- * 不備があれば即座にthrowする(メール設定と同様、初回利用時に検知する)。
+ * 不備があれば即座にthrowする。サーバー起動時に instrumentation.ts からも呼び、設定漏れを起動時に検知する。
  */
 export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = appConfigSchema.safeParse(env);

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { User } from "@prisma/client";
 import { authService } from "@/server/services/authService";
 import { userRepository } from "@/server/repositories/userRepository";
@@ -48,6 +48,11 @@ function createMockUser(overrides: Partial<User> = {}): User {
 
 beforeEach(() => {
     vi.clearAllMocks();
+});
+
+// 途中のexpectが失敗してもspy(console.errorなど)が元に戻るようにする
+afterEach(() => {
+    vi.restoreAllMocks();
 });
 
 describe("authService.register", () => {
@@ -129,7 +134,6 @@ describe("authService.register", () => {
                 "[auth] 確認メールの送信に失敗しました",
                 { userId: "new-id", error }
             );
-            consoleError.mockRestore();
         });
     });
 });

@@ -10,6 +10,7 @@ let instance: MailSender | null = null;
  * MAIL_DRIVER に応じたMailSenderを返す。
  * SMTPコネクションやSESクライアントを使い回すためシングルトンにしている。
  * 環境変数の検証はimport時ではなく初回呼び出し時に行うので、ビルドやテストには影響しない。
+ * (設定漏れ自体はサーバー起動時に instrumentation.ts で検知している)
  */
 export function getMailSender(): MailSender {
   if (instance) return instance;
