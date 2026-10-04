@@ -9,6 +9,7 @@ import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { loginSchema } from "@/schemas/auth";
+import { LOGIN_ERROR_CODE } from "@/lib/auth-error-codes";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,17 @@ import {
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+// 未認証かどうかで表示を切り替えるため、signInが返したcodeを持たせる
+class LoginError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string
+  ) {
+    super(message);
+    this.name = "LoginError";
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
@@ -46,17 +58,29 @@ export default function LoginPage() {
     },
   });
 
-  const loginMutation = useMutation({
+  const loginMutation = useMutation<unknown, LoginError, LoginFormValues>({
     mutationFn: async (values: LoginFormValues) => {
       const result = await signIn("credentials", {
         email: values.email,
         password: values.password,
         redirect: false,
-      });
+      }).catch(() => undefined); // 通信失敗などは下で共通エラーとして扱う
 
-      // signInは例外を投げないので、ここで手動でエラー判定してthrowする
-      if (!result || result.error) {
-        throw new Error("メールアドレスまたはパスワードが違います");
+      // signInは認証失敗では例外を投げないので、ここで手動でエラー判定してthrowする
+      if (result?.code === LOGIN_ERROR_CODE.emailNotVerified) {
+        throw new LoginError(
+          "メールアドレスの確認が完了していません。登録時にお送りした確認メールのリンクを開いてください。",
+          result.code
+        );
+      }
+      if (result?.error === "CredentialsSignin") {
+        throw new LoginError("メールアドレスまたはパスワードが違います");
+      }
+      // DB障害などは NextAuth が CredentialsSignin 以外(Configuration等)で返す
+      if (!result || result.error || !result.ok) {
+        throw new LoginError(
+          "エラーが発生しました。時間をおいて再度お試しください"
+        );
       }
 
       return result;
@@ -157,6 +181,15 @@ export default function LoginPage() {
                   className="rounded-[10px] border border-destructive/30 bg-destructive/5 px-3.5 py-2.5 text-sm text-destructive"
                 >
                   {loginMutation.error.message}
+                  {loginMutation.error.code ===
+                    LOGIN_ERROR_CODE.emailNotVerified && (
+                    <>
+                      <br />
+                      <Link href="/verify/resend" className={authLinkClass}>
+                        確認メールを再送する
+                      </Link>
+                    </>
+                  )}
                 </p>
               )}
 

@@ -4,6 +4,7 @@ import { authService } from "@/server/services/authService";
 import { userRepository } from "@/server/repositories/userRepository";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { EmailVerificationService } from "@/server/services/email-verification.service";
+import { EmailNotVerifiedError } from "@/server/errors/auth.error";
 
 vi.mock("@/server/repositories/userRepository", () => ({
     userRepository: {
@@ -163,8 +164,31 @@ describe("authService.validateCredentials", () => {
         expect(result).toBeNull();
     });
 
-    it("パスワードが一致する場合はpasswordHashを除いたユーザー情報を返す", async () => {
-        mockedFindByEmail.mockResolvedValue(createMockUser());
+    it("未認証でもパスワードが一致しない場合はnullを返す(未認証かどうかを漏らさない)", async () => {
+        mockedFindByEmail.mockResolvedValue(createMockUser({ emailVerified: null }));
+        mockedVerify.mockResolvedValue(false);
+
+        const result = await authService.validateCredentials(
+            "test@example.com",
+            "wrong-password"
+        );
+
+        expect(result).toBeNull();
+    });
+
+    it("パスワードが一致しても未認証ならEmailNotVerifiedErrorを投げる", async () => {
+        mockedFindByEmail.mockResolvedValue(createMockUser({ emailVerified: null }));
+        mockedVerify.mockResolvedValue(true);
+
+        await expect(
+            authService.validateCredentials("test@example.com", "correct-password")
+        ).rejects.toThrow(EmailNotVerifiedError);
+    });
+
+    it("パスワードが一致し認証済みならpasswordHashを除いたユーザー情報を返す", async () => {
+        mockedFindByEmail.mockResolvedValue(
+            createMockUser({ emailVerified: new Date("2026-01-02") })
+        );
         mockedVerify.mockResolvedValue(true);
 
         const result = await authService.validateCredentials(

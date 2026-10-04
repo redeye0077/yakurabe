@@ -9,6 +9,12 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     testTimeout: 10000,
+    server: {
+      deps: {
+        // next-auth は拡張子なしで next/server を import するため、Node の ESM 解決ではなく Vite に通す
+        inline: ["next-auth"],
+      },
+    },
   },
   resolve: {
     alias: {
