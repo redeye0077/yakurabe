@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { EmailVerificationToken } from "@prisma/client";
-import { EmailVerificationService } from "@/server/services/email-verification.service";
+import type { EmailVerificationToken, User } from "@prisma/client";
+import {
+    EmailVerificationService,
+    RESEND_INTERVAL_MS,
+} from "@/server/services/email-verification.service";
+import { userRepository } from "@/server/repositories/userRepository";
 import { EmailVerificationTokenRepository } from "@/server/repositories/email-verification-token.repository";
 import {
     ExpiredVerificationTokenError,
@@ -13,8 +17,15 @@ import type { MailSender } from "@/server/mail/mail-sender";
 vi.mock("@/server/repositories/email-verification-token.repository", () => ({
     EmailVerificationTokenRepository: {
         upsertByUserId: vi.fn(),
+        findByUserId: vi.fn(),
         findByTokenHash: vi.fn(),
         consume: vi.fn(),
+    },
+}));
+
+vi.mock("@/server/repositories/userRepository", () => ({
+    userRepository: {
+        findByEmail: vi.fn(),
     },
 }));
 
@@ -27,6 +38,8 @@ vi.mock("@/server/mail/get-mail-sender", () => ({
 }));
 
 const mockedUpsert = vi.mocked(EmailVerificationTokenRepository.upsertByUserId);
+const mockedFindByUserId = vi.mocked(EmailVerificationTokenRepository.findByUserId);
+const mockedFindByEmail = vi.mocked(userRepository.findByEmail);
 const mockedFindByTokenHash = vi.mocked(EmailVerificationTokenRepository.findByTokenHash);
 const mockedConsume = vi.mocked(EmailVerificationTokenRepository.consume);
 
@@ -47,6 +60,23 @@ function createMockToken(overrides: Partial<EmailVerificationToken> = {}): Email
         tokenHash: sha256("plain-token"),
         expiresAt: new Date(NOW.getTime() + DAY_MS),
         issuedAt: NOW,
+        ...overrides,
+    };
+}
+
+function createMockUser(overrides: Partial<User> = {}): User {
+    return {
+        id: "user-1",
+        username: "testuser",
+        email: "test@example.com",
+        emailVerified: null,
+        passwordHash: "hashed",
+        avatarUrl: null,
+        bio: null,
+        dartsCareer: null,
+        highestRating: null,
+        createdAt: new Date("2026-01-01"),
+        updatedAt: new Date("2026-01-01"),
         ...overrides,
     };
 }
@@ -179,5 +209,84 @@ describe("EmailVerificationService.sendVerificationEmail", () => {
         mockedSend.mockRejectedValueOnce(new Error("smtp down"));
 
         await expect(EmailVerificationService.sendVerificationEmail(user)).rejects.toThrow("smtp down");
+    });
+});
+
+describe("EmailVerificationService.resendVerificationEmail", () => {
+    it("未登録のメールアドレスなら何も送らない", async () => {
+        mockedFindByEmail.mockResolvedValue(null);
+
+        await EmailVerificationService.resendVerificationEmail("nobody@example.com");
+
+        expect(mockedFindByEmail).toHaveBeenCalledWith("nobody@example.com");
+        expect(mockedFindByUserId).not.toHaveBeenCalled();
+        expect(mockedUpsert).not.toHaveBeenCalled();
+        expect(mockedSend).not.toHaveBeenCalled();
+    });
+
+    it("認証済みのユーザーには送らない", async () => {
+        mockedFindByEmail.mockResolvedValue(createMockUser({ emailVerified: new Date("2026-01-02") }));
+
+        await EmailVerificationService.resendVerificationEmail("test@example.com");
+
+        expect(mockedUpsert).not.toHaveBeenCalled();
+        expect(mockedSend).not.toHaveBeenCalled();
+    });
+
+    it("未認証でトークンが無ければ送信する", async () => {
+        mockedFindByEmail.mockResolvedValue(createMockUser());
+        mockedFindByUserId.mockResolvedValue(null);
+
+        await EmailVerificationService.resendVerificationEmail("test@example.com");
+
+        expect(mockedUpsert).toHaveBeenCalledWith(expect.objectContaining({ userId: "user-1" }));
+        expect(mockedSend).toHaveBeenCalledTimes(1);
+        expect(mockedSend.mock.calls[0][0].to).toBe("test@example.com");
+    });
+
+    it("前回の発行から再送間隔内なら送らない", async () => {
+        mockedFindByEmail.mockResolvedValue(createMockUser());
+        mockedFindByUserId.mockResolvedValue(
+            createMockToken({ issuedAt: new Date(NOW.getTime() - RESEND_INTERVAL_MS + 1) }),
+        );
+
+        await EmailVerificationService.resendVerificationEmail("test@example.com");
+
+        expect(mockedUpsert).not.toHaveBeenCalled();
+        expect(mockedSend).not.toHaveBeenCalled();
+    });
+
+    it("前回の発行からちょうど再送間隔が経っていれば送信する", async () => {
+        mockedFindByEmail.mockResolvedValue(createMockUser());
+        mockedFindByUserId.mockResolvedValue(
+            createMockToken({ issuedAt: new Date(NOW.getTime() - RESEND_INTERVAL_MS) }),
+        );
+
+        await EmailVerificationService.resendVerificationEmail("test@example.com");
+
+        expect(mockedSend).toHaveBeenCalledTimes(1);
+    });
+
+    it("間隔の判定(findByUserId)はトークンの上書き(upsert)より前に行う", async () => {
+        mockedFindByEmail.mockResolvedValue(createMockUser());
+        mockedFindByUserId.mockResolvedValue(
+            createMockToken({ issuedAt: new Date(NOW.getTime() - RESEND_INTERVAL_MS) }),
+        );
+
+        await EmailVerificationService.resendVerificationEmail("test@example.com");
+
+        expect(mockedFindByUserId.mock.invocationCallOrder[0]).toBeLessThan(
+            mockedUpsert.mock.invocationCallOrder[0],
+        );
+    });
+
+    it("メール送信に失敗した場合はエラーを投げる", async () => {
+        mockedFindByEmail.mockResolvedValue(createMockUser());
+        mockedFindByUserId.mockResolvedValue(null);
+        mockedSend.mockRejectedValueOnce(new Error("smtp down"));
+
+        await expect(
+            EmailVerificationService.resendVerificationEmail("test@example.com"),
+        ).rejects.toThrow("smtp down");
     });
 });

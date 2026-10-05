@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { userRepository } from "@/server/repositories/userRepository";
 import { EmailVerificationTokenRepository } from "@/server/repositories/email-verification-token.repository";
 import {
   ExpiredVerificationTokenError,
@@ -9,6 +10,7 @@ import { getMailSender } from "@/server/mail/get-mail-sender";
 import { buildVerificationEmail } from "@/server/mail/templates/verification-email";
 
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+export const RESEND_INTERVAL_MS = 60 * 1000;
 
 // DBにはトークンの平文を保存せず、SHA-256のhex(64文字)のみ保存する
 function hashToken(token: string): string {
@@ -54,6 +56,36 @@ export const EmailVerificationService = {
         verificationUrl: verificationUrl.toString(),
       }),
     );
+  },
+
+  /**
+   * 未認証のユーザーにだけ確認メールを再送する。
+   * 未登録・認証済み・前回の発行から間もない場合は何もせずに終える
+   * (どの場合も画面上は同じ結果にするため、呼び出し側には区別を返さない)。
+   */
+  async resendVerificationEmail(email: string): Promise<void> {
+    const user = await userRepository.findByEmail(email);
+    if (!user || user.emailVerified !== null) {
+      return;
+    }
+
+    // 送信時のupsertでissuedAtが更新されるため、間隔の判定は必ず送信より前に行う
+    const current = await EmailVerificationTokenRepository.findByUserId(user.id);
+    if (
+      current &&
+      Date.now() - current.issuedAt.getTime() < RESEND_INTERVAL_MS
+    ) {
+      console.info("[email-verification] 再送間隔内のため送信をスキップしました", {
+        userId: user.id,
+      });
+      return;
+    }
+
+    await EmailVerificationService.sendVerificationEmail({
+      userId: user.id,
+      email: user.email,
+      username: user.username,
+    });
   },
 
   /**

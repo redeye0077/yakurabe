@@ -15,6 +15,12 @@ export const EmailVerificationTokenRepository = {
     });
   },
 
+  async findByUserId(userId: string) {
+    return prisma.emailVerificationToken.findUnique({
+      where: { userId },
+    });
+  },
+
   async findByTokenHash(tokenHash: string) {
     return prisma.emailVerificationToken.findUnique({
       where: { tokenHash },
