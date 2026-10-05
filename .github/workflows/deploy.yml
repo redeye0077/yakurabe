@@ -42,7 +42,9 @@ jobs:
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           script: |
+            set -e
             cd ~/app
             docker compose -f docker-compose.prod.yml pull
+            # 新しいイメージから使い捨てのコンテナを作ってマイグレーションし、成功したら新しいコードに切り替える
+            docker compose -f docker-compose.prod.yml run --rm -T app npx prisma migrate deploy
             docker compose -f docker-compose.prod.yml up -d
-            docker compose -f docker-compose.prod.yml exec -T app npx prisma migrate deploy
