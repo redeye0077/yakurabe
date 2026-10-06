@@ -31,7 +31,7 @@ describe("RegisterPage", () => {
         expect(fetch).not.toHaveBeenCalled();
     });
 
-    it("登録に成功したら/loginへ遷移する", async () => {
+    it("登録に成功したら送信完了画面(/register/sent)へ遷移する", async () => {
         vi.stubGlobal(
             "fetch",
             vi.fn().mockResolvedValue({
@@ -47,7 +47,7 @@ describe("RegisterPage", () => {
         await user.type(screen.getByLabelText("パスワード"), "Password123!");
         await user.click(screen.getByRole("button", { name: "新規登録" }));
 
-        await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/login"));
+        await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/register/sent"));
     });
 
     it("サーバーがエラーを返したらエラーメッセージを表示する", async () => {

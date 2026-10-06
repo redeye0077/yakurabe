@@ -76,7 +76,7 @@ export default function RegisterPage() {
       return res.json();
     },
     onSuccess: () => {
-      router.push("/login");
+      router.push("/register/sent");
     },
   });
 

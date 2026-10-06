@@ -52,7 +52,7 @@ MVPの期日(paizaBランク対策と並行するための開発期間短縮)を
 (例: ControllerからRepositoryを直接呼ばない)。
 
 ```
-Controller (API Route)
+Controller (API Route / Server Action)
     ↓ 呼び出す
 Service (ビジネスロジック)
     ↓ 呼び出す
@@ -66,6 +66,16 @@ Repository (Prismaを直接操作するのはここだけ)
   - ビジネスロジックを書かない。Serviceを呼び出すだけ
   - 例外をキャッチしてHTTPステータスに変換する
 
+- **Server Action** (`src/app/**/actions.ts`)
+  - `Action → Controller → Service` の構成にする。ActionからServiceやRepositoryを直接呼ばない
+  - Actionは`FormData`から値を取り出してControllerに渡し、戻り値に応じて`redirect()`等を行うだけにする
+  - Zodによる検証と、独自エラークラスから画面向けの結果への変換はController
+    (`src/server/controllers/*.controller.ts`)で行う
+    (例: `EmailVerificationController.verify` が `"success" | "expired" | "invalid"` を返す)
+  - `redirect()`は例外で遷移を実現するため、try/catchの中で呼ばない
+  - 例外: NextAuthの`signIn` / `signOut`を呼ぶだけのAction(例: ヘッダーのログアウト)は、
+    検証やビジネスロジックを持たないためControllerを挟まなくてよい
+
 - **Service** (`src/server/services/*.service.ts`)
   - ビジネスロジック本体(例: セッティング登録時の合計重量・合計価格の計算)
   - 複数のRepositoryを組み合わせる処理はここに書く
@@ -74,6 +84,7 @@ Repository (Prismaを直接操作するのはここだけ)
 - **Repository** (`src/server/repositories/*.repository.ts`)
   - Prisma Clientを直接操作するのはこの層のみ
   - 単純なCRUDメソッドを提供する(findById, findMany, create, update, delete等)
+  - 複数テーブルの整合性が必要な更新は、Repository内でトランザクション(`$transaction`)を使ってよい
   - ビジネスロジックを書かない
 
 ### ディレクトリ構成
