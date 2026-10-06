@@ -48,4 +48,19 @@ describe("getMailSender", () => {
     vi.stubEnv("AWS_SECRET_ACCESS_KEY", undefined);
     expect(() => getMailSender()).toThrow(/AWS_ACCESS_KEY_ID/);
   });
+
+  it("SMTPでMAIL_FROMがメールアドレス形式でなければエラーになる", () => {
+    stubSmtpEnv();
+    vi.stubEnv("MAIL_FROM", "not-an-email");
+    expect(() => getMailSender()).toThrow(/MAIL_FROM/);
+  });
+
+  it("SESでMAIL_FROMがメールアドレス形式でなければエラーになる", () => {
+    vi.stubEnv("MAIL_DRIVER", "ses");
+    vi.stubEnv("MAIL_FROM", "not-an-email");
+    vi.stubEnv("AWS_REGION", "ap-northeast-1");
+    vi.stubEnv("AWS_ACCESS_KEY_ID", "dummy");
+    vi.stubEnv("AWS_SECRET_ACCESS_KEY", "dummy");
+    expect(() => getMailSender()).toThrow(/MAIL_FROM/);
+  });
 });

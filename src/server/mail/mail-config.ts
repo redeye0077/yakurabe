@@ -4,13 +4,13 @@ import { z } from "zod";
 const mailConfigSchema = z.discriminatedUnion("MAIL_DRIVER", [
   z.object({
     MAIL_DRIVER: z.literal("smtp"),
-    MAIL_FROM: z.string().min(1),
+    MAIL_FROM: z.email(),
     SMTP_HOST: z.string().min(1),
     SMTP_PORT: z.coerce.number().int().positive(),
   }),
   z.object({
     MAIL_DRIVER: z.literal("ses"),
-    MAIL_FROM: z.string().min(1),
+    MAIL_FROM: z.email(),
     AWS_REGION: z.string().min(1),
     // 認証情報(AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY)はSDKが環境変数から
     // 自動で読み込むため、ここでは存在チェックのみ行い値は使わない
