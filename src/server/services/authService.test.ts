@@ -1,8 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { User } from "@prisma/client";
 import { authService } from "@/server/services/authService";
 import { userRepository } from "@/server/repositories/userRepository";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { EmailVerificationService } from "@/server/services/email-verification.service";
+import { EmailNotVerifiedError } from "@/server/errors/auth.error";
 
 vi.mock("@/server/repositories/userRepository", () => ({
     userRepository: {
@@ -16,16 +18,24 @@ vi.mock("@/lib/password", () => ({
     verifyPassword: vi.fn(),
 }));
 
+vi.mock("@/server/services/email-verification.service", () => ({
+    EmailVerificationService: {
+        sendVerificationEmail: vi.fn(),
+    },
+}));
+
 const mockedFindByEmail = vi.mocked(userRepository.findByEmail);
 const mockedCreate = vi.mocked(userRepository.create);
 const mockedHash = vi.mocked(hashPassword);
 const mockedVerify = vi.mocked(verifyPassword);
+const mockedSendVerificationEmail = vi.mocked(EmailVerificationService.sendVerificationEmail);
 
 function createMockUser(overrides: Partial<User> = {}): User {
     return {
         id: "id-1",
         username: "testuser",
         email: "test@example.com",
+        emailVerified: null,
         passwordHash: "hashed",
         avatarUrl: null,
         bio: null,
@@ -39,6 +49,11 @@ function createMockUser(overrides: Partial<User> = {}): User {
 
 beforeEach(() => {
     vi.clearAllMocks();
+});
+
+// 途中のexpectが失敗してもspy(console.errorなど)が元に戻るようにする
+afterEach(() => {
+    vi.restoreAllMocks();
 });
 
 describe("authService.register", () => {
@@ -88,6 +103,40 @@ describe("authService.register", () => {
         });
         expect(result).not.toHaveProperty("passwordHash");
     });
+
+    describe("確認メールの送信", () => {
+        beforeEach(() => {
+            mockedFindByEmail.mockResolvedValue(null);
+            mockedHash.mockResolvedValue("hashed-password");
+            mockedCreate.mockResolvedValue(
+                createMockUser({ id: "new-id", email: input.email, username: input.username })
+            );
+        });
+
+        it("ユーザー作成後に確認メールを送信する", async () => {
+            await authService.register(input);
+
+            expect(mockedSendVerificationEmail).toHaveBeenCalledWith({
+                userId: "new-id",
+                email: input.email,
+                username: input.username,
+            });
+        });
+
+        it("送信に失敗しても登録は成功として結果を返し、エラーをログに残す", async () => {
+            const error = new Error("smtp down");
+            mockedSendVerificationEmail.mockRejectedValue(error);
+            const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+            const result = await authService.register(input);
+
+            expect(result).toEqual({ id: "new-id", email: input.email, username: input.username });
+            expect(consoleError).toHaveBeenCalledWith(
+                "[auth] 確認メールの送信に失敗しました",
+                { userId: "new-id", error }
+            );
+        });
+    });
 });
 
 describe("authService.validateCredentials", () => {
@@ -115,8 +164,31 @@ describe("authService.validateCredentials", () => {
         expect(result).toBeNull();
     });
 
-    it("パスワードが一致する場合はpasswordHashを除いたユーザー情報を返す", async () => {
-        mockedFindByEmail.mockResolvedValue(createMockUser());
+    it("未認証でもパスワードが一致しない場合はnullを返す(未認証かどうかを漏らさない)", async () => {
+        mockedFindByEmail.mockResolvedValue(createMockUser({ emailVerified: null }));
+        mockedVerify.mockResolvedValue(false);
+
+        const result = await authService.validateCredentials(
+            "test@example.com",
+            "wrong-password"
+        );
+
+        expect(result).toBeNull();
+    });
+
+    it("パスワードが一致しても未認証ならEmailNotVerifiedErrorを投げる", async () => {
+        mockedFindByEmail.mockResolvedValue(createMockUser({ emailVerified: null }));
+        mockedVerify.mockResolvedValue(true);
+
+        await expect(
+            authService.validateCredentials("test@example.com", "correct-password")
+        ).rejects.toThrow(EmailNotVerifiedError);
+    });
+
+    it("パスワードが一致し認証済みならpasswordHashを除いたユーザー情報を返す", async () => {
+        mockedFindByEmail.mockResolvedValue(
+            createMockUser({ emailVerified: new Date("2026-01-02") })
+        );
         mockedVerify.mockResolvedValue(true);
 
         const result = await authService.validateCredentials(
