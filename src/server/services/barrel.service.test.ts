@@ -5,12 +5,12 @@ import { BarrelRepository } from "@/server/repositories/barrel.repository";
 
 vi.mock("@/server/repositories/barrel.repository", () => ({
     BarrelRepository: {
-        findByNameContains: vi.fn(),
+        findAll: vi.fn(),
         create: vi.fn(),
     },
 }));
 
-const mockedFindByNameContains = vi.mocked(BarrelRepository.findByNameContains);
+const mockedFindAll = vi.mocked(BarrelRepository.findAll);
 
 function createMockBarrel(overrides: Partial<Barrel> = {}): Barrel {
     return {
@@ -34,47 +34,35 @@ beforeEach(() => {
     vi.clearAllMocks();
 });
 
-describe("BarrelService.search", () => {
-    it("queryが未指定の場合は空配列を返し、Repositoryを呼ばない", async () => {
-        const result = await BarrelService.search(undefined);
-
-        expect(result).toEqual([]);
-        expect(mockedFindByNameContains).not.toHaveBeenCalled();
-    });
-
-    it("queryが空文字の場合は空配列を返し、Repositoryを呼ばない", async () => {
-        const result = await BarrelService.search("");
-
-        expect(result).toEqual([]);
-        expect(mockedFindByNameContains).not.toHaveBeenCalled();
-    });
-
-    it("queryが指定された場合はRepositoryを呼び、DTOの形に変換された結果を返す", async () => {
-        mockedFindByNameContains.mockResolvedValue([
-            createMockBarrel({ id: "barrel-1", name: "テストバレル", price: 10000, weight: 20 }),
+describe("BarrelService.listAll", () => {
+    it("Repositoryの全件取得を呼び、DTOの形に変換された結果を返す", async () => {
+        mockedFindAll.mockResolvedValue([
+            createMockBarrel({ id: "barrel-1", name: "テストバレルA", price: 10000, weight: 20 }),
+            createMockBarrel({ id: "barrel-2", name: "テストバレルB", price: 15000, weight: 18.5 }),
         ]);
 
-        const result = await BarrelService.search("テスト");
+        const result = await BarrelService.listAll();
 
-        expect(mockedFindByNameContains).toHaveBeenCalledWith("テスト");
+        expect(mockedFindAll).toHaveBeenCalledTimes(1);
         expect(result).toEqual([
-            { id: "barrel-1", name: "テストバレル", price: 10000, weight: 20 },
+            { id: "barrel-1", name: "テストバレルA", price: 10000, weight: 20 },
+            { id: "barrel-2", name: "テストバレルB", price: 15000, weight: 18.5 },
         ]);
+    });
+
+    it("バレルが0件の場合は空配列を返す", async () => {
+        mockedFindAll.mockResolvedValue([]);
+
+        const result = await BarrelService.listAll();
+
+        expect(result).toEqual([]);
     });
 
     it("結果にmaker/imageUrl等の余分なフィールドが含まれない", async () => {
-        mockedFindByNameContains.mockResolvedValue([createMockBarrel()]);
+        mockedFindAll.mockResolvedValue([createMockBarrel()]);
 
-        const result = await BarrelService.search("テスト");
+        const result = await BarrelService.listAll();
 
-        expect(result[0]).not.toHaveProperty("maker");
-        expect(result[0]).not.toHaveProperty("imageUrl");
-        expect(result[0]).not.toHaveProperty("hiveUrl");
-        expect(result[0]).not.toHaveProperty("totalLength");
-        expect(result[0]).not.toHaveProperty("maxDiameter");
-        expect(result[0]).not.toHaveProperty("material");
-        expect(result[0]).not.toHaveProperty("createdAt");
-        expect(result[0]).not.toHaveProperty("updatedAt");
         expect(Object.keys(result[0]).sort()).toEqual(
             ["id", "name", "price", "weight"].sort()
         );

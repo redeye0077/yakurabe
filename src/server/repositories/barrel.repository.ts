@@ -2,12 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { CreateBarrelInput } from "@/schemas/barrel";
 
 export const BarrelRepository = {
-  async findByNameContains(query: string) {
+  async findAll() {
     return prisma.barrel.findMany({
-      where: {
-        name: { contains: query },
-      },
-      orderBy: { name: "asc" },
+      // 同名の商品があっても表示順が揺れないよう、idで順序を確定させる
+      orderBy: [{ name: "asc" }, { id: "asc" }],
     });
   },
 
