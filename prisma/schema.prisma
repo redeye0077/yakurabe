@@ -63,6 +63,7 @@ model Shaft {
   hiveUrl     String?
   shaftLength String
   shaftShape  String
+  isSpin      Boolean   @default(false)
   material    String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
