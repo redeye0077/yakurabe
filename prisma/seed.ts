@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { BarrelService } from "@/server/services/barrel.service";
 import { ShaftService } from "@/server/services/shaft.service";
+import { FlightService } from "@/server/services/flight.service";
+import { CreateFlightInput } from "@/schemas/flight";
 
 async function seedBarrels() {
   const barrels = [
@@ -145,9 +147,105 @@ async function seedShafts() {
   }
 }
 
+// 価格・シャフト長は仮の値。公開前に要確認
+// flightType は成型/一体型の区別のみ。形状は flightShape で表す(シート系フライトは扱わない)
+async function seedFlights() {
+  const flights: CreateFlightInput[] = [
+    {
+      name: "L-Flight PRO シェイプ",
+      maker: "L-style",
+      price: 550,
+      imageUrl: "https://example.com/images/l-flight-pro-shape.png",
+      flightType: "MOLDED",
+      flightShape: "シェイプ",
+    },
+    {
+      name: "L-Flight PRO スタンダード",
+      maker: "L-style",
+      price: 550,
+      imageUrl: "https://example.com/images/l-flight-pro-standard.png",
+      flightType: "MOLDED",
+      flightShape: "スタンダード",
+    },
+    {
+      name: "L-Flight PRO スリム",
+      maker: "L-style",
+      price: 550,
+      imageUrl: "https://example.com/images/l-flight-pro-slim.png",
+      flightType: "MOLDED",
+      flightShape: "スリム",
+    },
+    {
+      name: "Fit Flight シェイプ",
+      maker: "COSMO DARTS",
+      price: 495,
+      imageUrl: "https://example.com/images/fit-flight-shape.png",
+      flightType: "MOLDED",
+      flightShape: "シェイプ",
+    },
+    {
+      name: "Fit Flight スタンダード",
+      maker: "COSMO DARTS",
+      price: 495,
+      imageUrl: "https://example.com/images/fit-flight-standard.png",
+      flightType: "MOLDED",
+      flightShape: "スタンダード",
+    },
+    {
+      name: "Fit Flight スリム",
+      maker: "COSMO DARTS",
+      price: 495,
+      imageUrl: "https://example.com/images/fit-flight-slim.png",
+      flightType: "MOLDED",
+      flightShape: "スリム",
+    },
+    {
+      name: "Fit Flight AIR シェイプ",
+      maker: "COSMO DARTS",
+      price: 550,
+      imageUrl: "https://example.com/images/fit-flight-air-shape.png",
+      flightType: "MOLDED",
+      flightShape: "シェイプ",
+    },
+    {
+      name: "Fit Flight AIR スタンダード",
+      maker: "COSMO DARTS",
+      price: 550,
+      imageUrl: "https://example.com/images/fit-flight-air-standard.png",
+      flightType: "MOLDED",
+      flightShape: "スタンダード",
+    },
+    {
+      name: "CONDOR AXE シェイプ ミディアム 27.5mm",
+      maker: "CONDOR",
+      price: 1430,
+      imageUrl: "https://example.com/images/condor-axe-shape-medium.png",
+      flightType: "SHAFT_INTEGRATED",
+      shaftLength: "27.5mm",
+      flightShape: "シェイプ",
+    },
+    {
+      name: "CONDOR AXE スタンダード ショート 21.5mm",
+      maker: "CONDOR",
+      price: 1430,
+      imageUrl: "https://example.com/images/condor-axe-standard-short.png",
+      flightType: "SHAFT_INTEGRATED",
+      shaftLength: "21.5mm",
+      flightShape: "スタンダード",
+    },
+  ];
+
+  await prisma.flight.deleteMany();
+
+  for (const flight of flights) {
+    await FlightService.create(flight);
+  }
+}
+
 async function main() {
   await seedBarrels();
   await seedShafts();
+  await seedFlights();
 }
 
 main()
