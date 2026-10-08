@@ -73,17 +73,18 @@ model Shaft {
 }
 
 model Flight {
-  id            String    @id @default(cuid())
-  name          String
-  maker         String
-  price         Int
-  imageUrl      String
-  hiveUrl       String?
-  includesShaft Boolean   @default(false)
-  flightShape   String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  settings      Setting[]
+  id          String     @id @default(cuid())
+  name        String
+  maker       String
+  price       Int
+  imageUrl    String
+  hiveUrl     String?
+  flightType  FlightType @default(MOLDED)
+  shaftLength String?
+  flightShape String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  settings    Setting[]
 
   @@map("flight")
 }
@@ -154,6 +155,11 @@ enum RecommendedLevel {
   INTERMEDIATE
   INTERMEDIATE_ADVANCED
   ADVANCED
+}
+
+enum FlightType {
+  MOLDED
+  SHAFT_INTEGRATED
 }
 
 enum Tag {
