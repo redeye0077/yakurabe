@@ -90,16 +90,16 @@ model Flight {
 }
 
 model Tip {
-  id        String    @id @default(cuid())
-  name      String
-  maker     String
-  price     Int
-  imageUrl  String
-  hiveUrl   String?
-  tipType   String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  settings  Setting[]
+  id         String        @id @default(cuid())
+  name       String
+  maker      String
+  price      Int
+  imageUrl   String
+  hiveUrl    String?
+  threadSize TipThreadSize @default(TWO_BA)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  settings   Setting[]
 
   @@map("tip")
 }
@@ -160,6 +160,11 @@ enum RecommendedLevel {
 enum FlightType {
   MOLDED
   SHAFT_INTEGRATED
+}
+
+enum TipThreadSize {
+  TWO_BA // 2BA(ソフトダーツで一般的な規格)
+  NO_5 // No.5
 }
 
 enum Tag {
