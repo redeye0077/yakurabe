@@ -1,8 +1,20 @@
+/**
+ * 公開前の確認事項(Seed のデータはすべて仮。実物・公式情報と照合してから公開する)
+ * - 全商品(バレル/シャフト/フライト/チップ)の価格
+ * - シャフト: 全商品の長さ
+ * - フライト: CONDOR AXE のシャフト長(ミディアム 27.5mm / ショート 21.5mm)
+ * - チップ: 以下の商品が実在するか(商品名・ねじ規格を含めて)
+ *   - プレミアムリップポイント ショート 2BA(L-style)
+ *   - Fit Point PLUS No.5(COSMO DARTS)
+ *   - TARGET ソフトチップ 2BA(TARGET)
+ */
 import { prisma } from "@/lib/prisma";
 import { BarrelService } from "@/server/services/barrel.service";
 import { ShaftService } from "@/server/services/shaft.service";
 import { FlightService } from "@/server/services/flight.service";
 import { CreateFlightInput } from "@/schemas/flight";
+import { TipService } from "@/server/services/tip.service";
+import { CreateTipInput } from "@/schemas/tip";
 
 async function seedBarrels() {
   const barrels = [
@@ -242,10 +254,94 @@ async function seedFlights() {
   }
 }
 
+// 価格は仮の値。公開前に要確認(ファイル先頭の確認事項を参照)
+// threadSize はねじ規格のみ。形状・長さ・規格違いは商品名で区別する
+async function seedTips() {
+  const tips: CreateTipInput[] = [
+    {
+      name: "リップポイント 2BA",
+      maker: "L-style",
+      price: 330,
+      imageUrl: "https://example.com/images/lippoint-2ba.png",
+      threadSize: "TWO_BA",
+    },
+    {
+      name: "リップポイント No.5",
+      maker: "L-style",
+      price: 330,
+      imageUrl: "https://example.com/images/lippoint-no5.png",
+      threadSize: "NO_5",
+    },
+    {
+      name: "プレミアムリップポイント 2BA",
+      maker: "L-style",
+      price: 550,
+      imageUrl: "https://example.com/images/premium-lippoint-2ba.png",
+      threadSize: "TWO_BA",
+    },
+    {
+      name: "プレミアムリップポイント No.5",
+      maker: "L-style",
+      price: 550,
+      imageUrl: "https://example.com/images/premium-lippoint-no5.png",
+      threadSize: "NO_5",
+    },
+    {
+      name: "プレミアムリップポイント ショート 2BA",
+      maker: "L-style",
+      price: 550,
+      imageUrl: "https://example.com/images/premium-lippoint-short-2ba.png",
+      threadSize: "TWO_BA",
+    },
+    {
+      name: "Fit Point 2BA",
+      maker: "COSMO DARTS",
+      price: 330,
+      imageUrl: "https://example.com/images/fit-point-2ba.png",
+      threadSize: "TWO_BA",
+    },
+    {
+      name: "Fit Point No.5",
+      maker: "COSMO DARTS",
+      price: 330,
+      imageUrl: "https://example.com/images/fit-point-no5.png",
+      threadSize: "NO_5",
+    },
+    {
+      name: "Fit Point PLUS 2BA",
+      maker: "COSMO DARTS",
+      price: 440,
+      imageUrl: "https://example.com/images/fit-point-plus-2ba.png",
+      threadSize: "TWO_BA",
+    },
+    {
+      name: "Fit Point PLUS No.5",
+      maker: "COSMO DARTS",
+      price: 440,
+      imageUrl: "https://example.com/images/fit-point-plus-no5.png",
+      threadSize: "NO_5",
+    },
+    {
+      name: "TARGET ソフトチップ 2BA",
+      maker: "TARGET",
+      price: 440,
+      imageUrl: "https://example.com/images/target-soft-tip-2ba.png",
+      threadSize: "TWO_BA",
+    },
+  ];
+
+  await prisma.tip.deleteMany();
+
+  for (const tip of tips) {
+    await TipService.create(tip);
+  }
+}
+
 async function main() {
   await seedBarrels();
   await seedShafts();
   await seedFlights();
+  await seedTips();
 }
 
 main()
