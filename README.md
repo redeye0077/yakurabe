@@ -34,3 +34,8 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## 今後の改善
+
+- **管理者用の商品登録画面**: 現在、商品マスタ(バレル/シャフト/フライト/チップ)は Seed スクリプトでのみ登録している。運営が画面から商品を追加・編集できる管理者用の画面を用意する
+- **バレルとチップのねじ規格の整合チェック**: ねじ規格(2BA / No.5 / 4BA / OTO)が違うバレルとチップは組み合わせられない。ソフトバレルの約95%が2BAのため MVP では見送ったが、Barrel にねじ規格を持たせ、セッティング登録時に整合をチェックする
