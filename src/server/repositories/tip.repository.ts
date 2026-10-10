@@ -1,15 +1,15 @@
 import { prisma } from "@/lib/prisma";
-import { CreateBarrelInput } from "@/schemas/barrel";
+import { CreateTipInput } from "@/schemas/tip";
 
-export const BarrelRepository = {
+export const TipRepository = {
   async findAll() {
-    return prisma.barrel.findMany({
+    return prisma.tip.findMany({
       // 同名の商品があっても表示順が揺れないよう、idで順序を確定させる
       orderBy: [{ name: "asc" }, { id: "asc" }],
     });
   },
 
-  async create(data: CreateBarrelInput) {
-    return prisma.barrel.create({ data });
+  async create(data: CreateTipInput) {
+    return prisma.tip.create({ data });
   },
 };
