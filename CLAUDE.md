@@ -65,6 +65,8 @@ Repository (Prismaを直接操作するのはここだけ)
   - リクエストのパース、バリデーション結果の受け取り、レスポンス整形(status code含む)のみ担当
   - ビジネスロジックを書かない。Serviceを呼び出すだけ
   - 例外をキャッチしてHTTPステータスに変換する
+  - 例外: 商品マスタ(バレル/シャフト/フライト/チップ)の一覧取得は、Server Component から
+    Service を直接呼ぶ(route.ts と Controller を経由しない)
 
 - **Server Action** (`src/app/**/actions.ts`)
   - `Action → Controller → Service` の構成にする。ActionからServiceやRepositoryを直接呼ばない
@@ -96,17 +98,14 @@ src/
     (auth)/                     # 認証関連ページ (ログイン, 新規登録)
     mypage/                     # マイページ配下
     api/
-      barrels/route.ts           # Controller(検索付きセレクト用の一覧取得のみ)
-      shafts/route.ts
-      flights/route.ts
-      tips/route.ts
       settings/route.ts
       settings/[id]/route.ts
       ...
   server/
     controllers/                # Controllerロジックを分離する場合はここに置き、
                                  # route.tsからは呼び出すだけにする
-    services/
+    services/                   # 商品(barrel/shaft/flight/tip)はAPIを持たない。商品一覧は
+                                 # Server Componentから Service(listAll) を直接呼んで取得する
       barrel.service.ts
       shaft.service.ts
       flight.service.ts
@@ -171,16 +170,18 @@ prisma/
   - Controller層: 独自エラークラスをcatchしてHTTPステータスにマッピングする
 - セッティング登録フォームでのバレル/シャフト/フライト/チップ選択は、単純な`<select>`
   (プルダウン)ではなく、名前で絞り込める検索付きセレクト(shadcnの`Command` +
-  `Popover`によるComboboxパターン)を使うこと。初期表示(未入力時)は候補を出さず空の状態
-  にする。候補が0件の場合は「該当する商品が見つかりません」とだけ表示し、商品追加の
+  `Popover`によるComboboxパターン)を使うこと。商品の全件を親のServer Componentから
+  propsで受け取り、フォーカス時に全件を表示し、入力に応じて画面側だけで絞り込む
+  (検索のたびにサーバーへ問い合わせない)。候補が0件の場合は「該当する商品が見つかりません」とだけ表示し、商品追加の
   リクエスト機能や他の代替手段は用意しない(商品はマスタデータとして運営側でのみ追加する)
 - 「アピールポイント」(`Setting.tag`)は自由記述の入力欄にせず、`Tag` Enum
   の値から選ぶプルダウン(`<Select>`)にすること。表記ゆれ防止のため必須項目とする
 
 ## 実装時の進め方(重要)
 
-1. 新しい機能を追加するときは、既存の`barrel.repository.ts` / `barrel.service.ts` /
-   `src/app/api/barrels/route.ts` のパターンを踏襲すること。独自の構成を勝手に作らない
+1. 商品マスタ(シャフト/フライト/チップ)を追加するときは、既存のバレルのパターン
+   (Repository(`findAll`)・Service(`listAll` と Seed 用の `create`))を踏襲すること。
+   route.ts と Controller は作らない。独自の構成を勝手に作らない
 2. Prismaスキーマを変更する場合は、変更内容を先に提示してから
    `npx prisma migrate dev --name <変更内容>` を実行すること。人間の確認なしに勝手に
    マイグレーションを実行しない

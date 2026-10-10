@@ -4,15 +4,11 @@ import { CreateBarrelInput } from "@/schemas/barrel";
 
 export const BarrelService = {
   /**
-   * 検索付きComboboxの候補取得用。
-   * queryが空の場合は候補を出さない仕様のため、DBには問い合わせない。
+   * セッティング登録フォームのCombobox用に全件を返す。
+   * 商品はSeedでのみ管理していて件数が増えないため、絞り込みは画面側で行う。
    */
-  async search(query: string | undefined): Promise<BarrelListItemDto[]> {
-    if (!query) {
-      return [];
-    }
-
-    const barrels = await BarrelRepository.findByNameContains(query);
+  async listAll(): Promise<BarrelListItemDto[]> {
+    const barrels = await BarrelRepository.findAll();
 
     return barrels.map((barrel) => ({
       id: barrel.id,
