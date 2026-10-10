@@ -24,6 +24,7 @@ function createMockShaft(overrides: Partial<Shaft> = {}): Shaft {
         shaftShape: "ストレート",
         isSpin: false,
         material: "ポリカーボネート",
+        flightSystem: "UNIVERSAL",
         createdAt: new Date("2026-01-01"),
         updatedAt: new Date("2026-01-01"),
         ...overrides,

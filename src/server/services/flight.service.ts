@@ -22,6 +22,7 @@ export const FlightService = {
   // Seed専用。APIからは公開しない。
   async create(data: CreateFlightInput) {
     const shaftLength = data.shaftLength ?? null;
+    const flightSystem = data.flightSystem ?? null;
 
     // シャフト一体型は長さ違いを別商品として扱うため、長さが必須
     if (data.flightType === "SHAFT_INTEGRATED" && shaftLength === null) {
@@ -31,6 +32,14 @@ export const FlightService = {
       throw new ValidationError("成型フライトにはシャフトの長さを指定できません");
     }
 
-    return FlightRepository.create({ ...data, shaftLength });
+    // シャフト一体型はシャフト部分ごと交換するため規格を持たない。成型はシャフトと組み合わせるため規格が必須
+    if (data.flightType === "SHAFT_INTEGRATED" && flightSystem !== null) {
+      throw new ValidationError("シャフト一体型フライトには規格を指定できません");
+    }
+    if (data.flightType === "MOLDED" && flightSystem === null) {
+      throw new ValidationError("成型フライトには規格が必要です");
+    }
+
+    return FlightRepository.create({ ...data, shaftLength, flightSystem });
   },
 };

@@ -55,36 +55,39 @@ model Barrel {
 }
 
 model Shaft {
-  id          String    @id @default(cuid())
-  name        String
-  maker       String
-  price       Int
-  imageUrl    String
-  hiveUrl     String?
-  shaftLength String
-  shaftShape  String
-  isSpin      Boolean   @default(false)
-  material    String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  settings    Setting[]
+  id           String       @id @default(cuid())
+  name         String
+  maker        String
+  price        Int
+  imageUrl     String
+  hiveUrl      String?
+  shaftLength  String
+  shaftShape   String
+  isSpin       Boolean      @default(false)
+  material     String
+  flightSystem FlightSystem
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  settings     Setting[]
 
   @@map("shaft")
 }
 
 model Flight {
-  id          String     @id @default(cuid())
-  name        String
-  maker       String
-  price       Int
-  imageUrl    String
-  hiveUrl     String?
-  flightType  FlightType @default(MOLDED)
-  shaftLength String?
-  flightShape String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  settings    Setting[]
+  id           String        @id @default(cuid())
+  name         String
+  maker        String
+  price        Int
+  imageUrl     String
+  hiveUrl      String?
+  flightType   FlightType    @default(MOLDED)
+  shaftLength  String?
+  flightShape  String
+  // シャフト一体型はシャフト部分ごと交換するため規格を持たない(null)。成型は必須
+  flightSystem FlightSystem?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  settings     Setting[]
 
   @@map("flight")
 }
@@ -160,6 +163,14 @@ enum RecommendedLevel {
 enum FlightType {
   MOLDED
   SHAFT_INTEGRATED
+}
+
+// シャフトとフライトの接続規格。規格が違うと物理的に組み合わせられない
+enum FlightSystem {
+  UNIVERSAL // 汎用(爪でフライトを挟むタイプ。L-style、TARGETのPRO GRIPなど)
+  FIT // フィット(COSMO DARTS)
+  CLICK // クリック(Harrows)
+  EIGHT // エイト(8FLIGHT)
 }
 
 enum TipThreadSize {

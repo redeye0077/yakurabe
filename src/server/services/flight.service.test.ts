@@ -26,6 +26,7 @@ function createMockFlight(overrides: Partial<Flight> = {}): Flight {
         flightType: "MOLDED",
         shaftLength: null,
         flightShape: "シェイプ",
+        flightSystem: "UNIVERSAL",
         createdAt: new Date("2026-01-01"),
         updatedAt: new Date("2026-01-01"),
         ...overrides,
@@ -40,6 +41,7 @@ function createInput(overrides: Partial<CreateFlightInput> = {}): CreateFlightIn
         imageUrl: "https://example.com/flight.png",
         flightType: "MOLDED",
         flightShape: "シェイプ",
+        flightSystem: "UNIVERSAL",
         ...overrides,
     };
 }
@@ -58,6 +60,7 @@ describe("FlightService.listAll", () => {
                 price: 1430,
                 flightType: "SHAFT_INTEGRATED",
                 shaftLength: "27.5mm",
+                flightSystem: null,
             }),
         ]);
 
@@ -99,23 +102,37 @@ describe("FlightService.create", () => {
         await FlightService.create(createInput({ flightType: "MOLDED" }));
 
         expect(mockedCreate).toHaveBeenCalledWith(
-            expect.objectContaining({ flightType: "MOLDED", shaftLength: null })
+            expect.objectContaining({
+                flightType: "MOLDED",
+                shaftLength: null,
+                flightSystem: "UNIVERSAL",
+            })
         );
     });
 
     it("シャフト一体型フライトはshaftLengthを含めて登録する", async () => {
         await FlightService.create(
-            createInput({ flightType: "SHAFT_INTEGRATED", shaftLength: "27.5mm" })
+            createInput({
+                flightType: "SHAFT_INTEGRATED",
+                shaftLength: "27.5mm",
+                flightSystem: null,
+            })
         );
 
         expect(mockedCreate).toHaveBeenCalledWith(
-            expect.objectContaining({ flightType: "SHAFT_INTEGRATED", shaftLength: "27.5mm" })
+            expect.objectContaining({
+                flightType: "SHAFT_INTEGRATED",
+                shaftLength: "27.5mm",
+                flightSystem: null,
+            })
         );
     });
 
     it("シャフト一体型フライトでshaftLengthが無い場合はValidationErrorを投げる", async () => {
         await expect(
-            FlightService.create(createInput({ flightType: "SHAFT_INTEGRATED" }))
+            FlightService.create(
+                createInput({ flightType: "SHAFT_INTEGRATED", flightSystem: null })
+            )
         ).rejects.toThrow(ValidationError);
         expect(mockedCreate).not.toHaveBeenCalled();
     });
@@ -123,6 +140,37 @@ describe("FlightService.create", () => {
     it("成型フライトでshaftLengthが指定された場合はValidationErrorを投げる", async () => {
         await expect(
             FlightService.create(createInput({ flightType: "MOLDED", shaftLength: "27.5mm" }))
+        ).rejects.toThrow(ValidationError);
+        expect(mockedCreate).not.toHaveBeenCalled();
+    });
+
+    it("シャフト一体型フライトでflightSystemが省略された場合はnullにして登録する", async () => {
+        const input = createInput({ flightType: "SHAFT_INTEGRATED", shaftLength: "27.5mm" });
+        delete input.flightSystem;
+
+        await FlightService.create(input);
+
+        expect(mockedCreate).toHaveBeenCalledWith(
+            expect.objectContaining({ flightType: "SHAFT_INTEGRATED", flightSystem: null })
+        );
+    });
+
+    it("シャフト一体型フライトでflightSystemが指定された場合はValidationErrorを投げる", async () => {
+        await expect(
+            FlightService.create(
+                createInput({
+                    flightType: "SHAFT_INTEGRATED",
+                    shaftLength: "27.5mm",
+                    flightSystem: "FIT",
+                })
+            )
+        ).rejects.toThrow(ValidationError);
+        expect(mockedCreate).not.toHaveBeenCalled();
+    });
+
+    it("成型フライトでflightSystemが無い場合はValidationErrorを投げる", async () => {
+        await expect(
+            FlightService.create(createInput({ flightType: "MOLDED", flightSystem: null }))
         ).rejects.toThrow(ValidationError);
         expect(mockedCreate).not.toHaveBeenCalled();
     });
