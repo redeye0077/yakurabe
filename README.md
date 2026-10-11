@@ -39,3 +39,4 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 - **管理者用の商品登録画面**: 現在、商品マスタ(バレル/シャフト/フライト/チップ)は Seed スクリプトでのみ登録している。運営が画面から商品を追加・編集できる管理者用の画面を用意する
 - **バレルとチップのねじ規格の整合チェック**: ねじ規格(2BA / No.5 / 4BA / OTO)が違うバレルとチップは組み合わせられない。ソフトバレルの約95%が2BAのため MVP では見送ったが、Barrel にねじ規格を持たせ、セッティング登録時に整合をチェックする
+- **商品画像の用意**: 商品マスタの Seed の `imageUrl` は現在 `https://example.com/...` のダミー。画像の保存先(S3 など)を決めたうえで実際の画像に差し替え、`next.config.ts` の `images.remotePatterns` に保存先のホストを追加する

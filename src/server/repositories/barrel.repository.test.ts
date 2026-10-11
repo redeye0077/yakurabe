@@ -6,11 +6,13 @@ vi.mock("@/lib/prisma", () => ({
     prisma: {
         barrel: {
             findMany: vi.fn(),
+            upsert: vi.fn(),
         },
     },
 }));
 
 const mockedFindMany = vi.mocked(prisma.barrel.findMany);
+const mockedUpsert = vi.mocked(prisma.barrel.upsert);
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -24,6 +26,20 @@ describe("BarrelRepository.findAll", () => {
 
         expect(mockedFindMany).toHaveBeenCalledWith({
             orderBy: [{ name: "asc" }, { id: "asc" }],
+        });
+    });
+});
+
+describe("BarrelRepository.upsert", () => {
+    it("idで検索し、無ければidを付けて作成、あれば同じ内容で更新する", async () => {
+        const data = { name: "テストバレル", maker: "テストメーカー", price: 10000, imageUrl: "/x.png", weight: 20, totalLength: 40, maxDiameter: 7.5, material: "タングステン" };
+
+        await BarrelRepository.upsert("barrel-1", data);
+
+        expect(mockedUpsert).toHaveBeenCalledWith({
+            where: { id: "barrel-1" },
+            create: { id: "barrel-1", ...data },
+            update: data,
         });
     });
 });

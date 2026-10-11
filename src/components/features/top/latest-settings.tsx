@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { SettingCard } from "@/components/features/setting/setting-card";
-import type { SettingSummary } from "@/server/dto/setting.dto";
+import { SettingGrid } from "@/components/features/setting/setting-grid";
+import type { SettingListItemDto } from "@/server/dto/setting.dto";
 
 type LatestSettingsProps = {
-  settings: SettingSummary[];
+  settings: SettingListItemDto[];
 };
 
 export function LatestSettings({ settings }: LatestSettingsProps) {
@@ -13,17 +13,18 @@ export function LatestSettings({ settings }: LatestSettingsProps) {
         <h2 className="font-heading text-[21px] font-semibold text-brand-ink">
           新着のセッティング
         </h2>
-        <Link
-          href="/settings"
-          className="text-[13.5px] text-brand-brass transition-colors hover:text-brand-brass-dark hover:underline"
-        >
-          もっと見る &gt;
-        </Link>
+        {/* 0件のときは一覧ページも空なので出さない */}
+        {settings.length > 0 && (
+          <Link
+            href="/settings"
+            className="text-[13.5px] text-brand-brass transition-colors hover:text-brand-brass-dark hover:underline"
+          >
+            もっと見る &gt;
+          </Link>
+        )}
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-5 lg:grid-cols-4">
-        {settings.map((setting) => (
-          <SettingCard key={setting.id} setting={setting} />
-        ))}
+      <div className="mt-5">
+        <SettingGrid settings={settings} headingLevel={3} />
       </div>
     </section>
   );

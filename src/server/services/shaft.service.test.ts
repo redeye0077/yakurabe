@@ -6,11 +6,12 @@ import { ShaftRepository } from "@/server/repositories/shaft.repository";
 vi.mock("@/server/repositories/shaft.repository", () => ({
     ShaftRepository: {
         findAll: vi.fn(),
-        create: vi.fn(),
+        upsert: vi.fn(),
     },
 }));
 
 const mockedFindAll = vi.mocked(ShaftRepository.findAll);
+const mockedUpsert = vi.mocked(ShaftRepository.upsert);
 
 function createMockShaft(overrides: Partial<Shaft> = {}): Shaft {
     return {
@@ -67,5 +68,25 @@ describe("ShaftService.listAll", () => {
         expect(Object.keys(result[0]).sort()).toEqual(
             ["id", "name", "price"].sort()
         );
+    });
+});
+
+describe("ShaftService.upsert", () => {
+    it("受け取ったidと入力をそのままRepositoryに渡す", async () => {
+        const input = {
+            name: "テストシャフト",
+            maker: "テストメーカー",
+            price: 660,
+            imageUrl: "https://example.com/shaft.png",
+            shaftLength: "24.0mm",
+            shaftShape: "ノーマル",
+            isSpin: false,
+            material: "ナイロン",
+            flightSystem: "FIT" as const,
+        };
+
+        await ShaftService.upsert("shaft-1", input);
+
+        expect(mockedUpsert).toHaveBeenCalledWith("shaft-1", input);
     });
 });

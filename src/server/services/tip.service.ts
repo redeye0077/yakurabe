@@ -17,8 +17,8 @@ export const TipService = {
     }));
   },
 
-  // Seed専用。APIからは公開しない。
-  async create(data: CreateTipInput) {
-    return TipRepository.create(data);
+  // Seed専用。APIからは公開しない。Seedを再実行しても重複しないよう固定idでupsertする
+  async upsert(id: string, data: CreateTipInput) {
+    return TipRepository.upsert(id, data);
   },
 };

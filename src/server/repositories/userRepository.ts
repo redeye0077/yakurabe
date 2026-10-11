@@ -17,4 +17,21 @@ export const userRepository = {
       data,
     });
   },
+
+  // Seed専用。固定idで作成し、同じidがあれば同じ内容で更新する
+  async upsert(
+    id: string,
+    data: {
+      email: string;
+      passwordHash: string;
+      username: string;
+      emailVerified: Date | null;
+    }
+  ) {
+    return prisma.user.upsert({
+      where: { id },
+      create: { id, ...data },
+      update: data,
+    });
+  },
 };

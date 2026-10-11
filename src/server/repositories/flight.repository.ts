@@ -9,7 +9,12 @@ export const FlightRepository = {
     });
   },
 
-  async create(data: CreateFlightInput) {
-    return prisma.flight.create({ data });
+  // Seedで固定idを使って登録するため、同じidがあれば更新する
+  async upsert(id: string, data: CreateFlightInput) {
+    return prisma.flight.upsert({
+      where: { id },
+      create: { id, ...data },
+      update: data,
+    });
   },
 };

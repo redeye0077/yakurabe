@@ -5,6 +5,7 @@ import { userRepository } from "@/server/repositories/userRepository";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { EmailVerificationService } from "@/server/services/email-verification.service";
 import { EmailNotVerifiedError } from "@/server/errors/auth.error";
+import { LOGIN_DISABLED_PASSWORD_HASH } from "@/server/services/user.service";
 
 vi.mock("@/server/repositories/userRepository", () => ({
     userRepository: {
@@ -202,5 +203,31 @@ describe("authService.validateCredentials", () => {
             username: "testuser",
         });
         expect(result).not.toHaveProperty("passwordHash");
+    });
+
+});
+
+// 本物のbcryptで照合するケース。mockImplementationが後続のテストに漏れないよう、describeを分けて毎回リセットする
+describe("authService.validateCredentials(本物のbcryptで照合)", () => {
+    afterEach(() => mockedVerify.mockReset());
+
+    it("サンプルユーザー(ログイン不可のpasswordHash)はどのパスワードでもnullを返す", async () => {
+        const actual = await vi.importActual<typeof import("@/lib/password")>("@/lib/password");
+        mockedVerify.mockImplementation(actual.verifyPassword);
+        mockedFindByEmail.mockResolvedValue(
+            createMockUser({
+                email: "sample-user-01@yakurabe.invalid",
+                passwordHash: LOGIN_DISABLED_PASSWORD_HASH,
+                emailVerified: new Date("2026-10-01"),
+            })
+        );
+
+        for (const password of ["", "password", LOGIN_DISABLED_PASSWORD_HASH]) {
+            const result = await authService.validateCredentials(
+                "sample-user-01@yakurabe.invalid",
+                password
+            );
+            expect(result).toBeNull();
+        }
     });
 });
