@@ -6,11 +6,12 @@ import { BarrelRepository } from "@/server/repositories/barrel.repository";
 vi.mock("@/server/repositories/barrel.repository", () => ({
     BarrelRepository: {
         findAll: vi.fn(),
-        create: vi.fn(),
+        upsert: vi.fn(),
     },
 }));
 
 const mockedFindAll = vi.mocked(BarrelRepository.findAll);
+const mockedUpsert = vi.mocked(BarrelRepository.upsert);
 
 function createMockBarrel(overrides: Partial<Barrel> = {}): Barrel {
     return {
@@ -66,5 +67,24 @@ describe("BarrelService.listAll", () => {
         expect(Object.keys(result[0]).sort()).toEqual(
             ["id", "name", "price", "weight"].sort()
         );
+    });
+});
+
+describe("BarrelService.upsert", () => {
+    it("受け取ったidと入力をそのままRepositoryに渡す", async () => {
+        const input = {
+            name: "テストバレル",
+            maker: "テストメーカー",
+            price: 10000,
+            imageUrl: "https://example.com/barrel.png",
+            weight: 20,
+            totalLength: 40,
+            maxDiameter: 7.5,
+            material: "タングステン",
+        };
+
+        await BarrelService.upsert("barrel-1", input);
+
+        expect(mockedUpsert).toHaveBeenCalledWith("barrel-1", input);
     });
 });

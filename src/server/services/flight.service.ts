@@ -19,8 +19,8 @@ export const FlightService = {
     }));
   },
 
-  // Seed専用。APIからは公開しない。
-  async create(data: CreateFlightInput) {
+  // Seed専用。APIからは公開しない。Seedを再実行しても重複しないよう固定idでupsertする
+  async upsert(id: string, data: CreateFlightInput) {
     const shaftLength = data.shaftLength ?? null;
     const flightSystem = data.flightSystem ?? null;
 
@@ -40,6 +40,6 @@ export const FlightService = {
       throw new ValidationError("成型フライトには規格が必要です");
     }
 
-    return FlightRepository.create({ ...data, shaftLength, flightSystem });
+    return FlightRepository.upsert(id, { ...data, shaftLength, flightSystem });
   },
 };

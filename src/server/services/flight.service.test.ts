@@ -8,12 +8,12 @@ import { ValidationError } from "@/server/errors/validation.error";
 vi.mock("@/server/repositories/flight.repository", () => ({
     FlightRepository: {
         findAll: vi.fn(),
-        create: vi.fn(),
+        upsert: vi.fn(),
     },
 }));
 
 const mockedFindAll = vi.mocked(FlightRepository.findAll);
-const mockedCreate = vi.mocked(FlightRepository.create);
+const mockedUpsert = vi.mocked(FlightRepository.upsert);
 
 function createMockFlight(overrides: Partial<Flight> = {}): Flight {
     return {
@@ -97,11 +97,12 @@ describe("FlightService.listAll", () => {
     });
 });
 
-describe("FlightService.create", () => {
+describe("FlightService.upsert", () => {
     it("成型フライトはshaftLengthをnullにして登録する", async () => {
-        await FlightService.create(createInput({ flightType: "MOLDED" }));
+        await FlightService.upsert("flight-1", createInput({ flightType: "MOLDED" }));
 
-        expect(mockedCreate).toHaveBeenCalledWith(
+        expect(mockedUpsert).toHaveBeenCalledWith(
+            "flight-1",
             expect.objectContaining({
                 flightType: "MOLDED",
                 shaftLength: null,
@@ -111,7 +112,8 @@ describe("FlightService.create", () => {
     });
 
     it("シャフト一体型フライトはshaftLengthを含めて登録する", async () => {
-        await FlightService.create(
+        await FlightService.upsert(
+            "flight-1",
             createInput({
                 flightType: "SHAFT_INTEGRATED",
                 shaftLength: "27.5mm",
@@ -119,7 +121,8 @@ describe("FlightService.create", () => {
             })
         );
 
-        expect(mockedCreate).toHaveBeenCalledWith(
+        expect(mockedUpsert).toHaveBeenCalledWith(
+            "flight-1",
             expect.objectContaining({
                 flightType: "SHAFT_INTEGRATED",
                 shaftLength: "27.5mm",
@@ -130,34 +133,37 @@ describe("FlightService.create", () => {
 
     it("シャフト一体型フライトでshaftLengthが無い場合はValidationErrorを投げる", async () => {
         await expect(
-            FlightService.create(
+            FlightService.upsert(
+                "flight-1",
                 createInput({ flightType: "SHAFT_INTEGRATED", flightSystem: null })
             )
         ).rejects.toThrow(ValidationError);
-        expect(mockedCreate).not.toHaveBeenCalled();
+        expect(mockedUpsert).not.toHaveBeenCalled();
     });
 
     it("成型フライトでshaftLengthが指定された場合はValidationErrorを投げる", async () => {
         await expect(
-            FlightService.create(createInput({ flightType: "MOLDED", shaftLength: "27.5mm" }))
+            FlightService.upsert("flight-1", createInput({ flightType: "MOLDED", shaftLength: "27.5mm" }))
         ).rejects.toThrow(ValidationError);
-        expect(mockedCreate).not.toHaveBeenCalled();
+        expect(mockedUpsert).not.toHaveBeenCalled();
     });
 
     it("シャフト一体型フライトでflightSystemが省略された場合はnullにして登録する", async () => {
         const input = createInput({ flightType: "SHAFT_INTEGRATED", shaftLength: "27.5mm" });
         delete input.flightSystem;
 
-        await FlightService.create(input);
+        await FlightService.upsert("flight-1", input);
 
-        expect(mockedCreate).toHaveBeenCalledWith(
+        expect(mockedUpsert).toHaveBeenCalledWith(
+            "flight-1",
             expect.objectContaining({ flightType: "SHAFT_INTEGRATED", flightSystem: null })
         );
     });
 
     it("シャフト一体型フライトでflightSystemが指定された場合はValidationErrorを投げる", async () => {
         await expect(
-            FlightService.create(
+            FlightService.upsert(
+                "flight-1",
                 createInput({
                     flightType: "SHAFT_INTEGRATED",
                     shaftLength: "27.5mm",
@@ -165,13 +171,13 @@ describe("FlightService.create", () => {
                 })
             )
         ).rejects.toThrow(ValidationError);
-        expect(mockedCreate).not.toHaveBeenCalled();
+        expect(mockedUpsert).not.toHaveBeenCalled();
     });
 
     it("成型フライトでflightSystemが無い場合はValidationErrorを投げる", async () => {
         await expect(
-            FlightService.create(createInput({ flightType: "MOLDED", flightSystem: null }))
+            FlightService.upsert("flight-1", createInput({ flightType: "MOLDED", flightSystem: null }))
         ).rejects.toThrow(ValidationError);
-        expect(mockedCreate).not.toHaveBeenCalled();
+        expect(mockedUpsert).not.toHaveBeenCalled();
     });
 });
