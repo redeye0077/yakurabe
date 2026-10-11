@@ -3,6 +3,6 @@ export type SettingSummary = {
   id: string;
   title: string;
   userName: string;
-  totalWeight: number; // g
+  barrelWeight: number; // g。重量はバレル重量を指す(保存せず商品から取得する)
   imageUrl: string | null;
 };
