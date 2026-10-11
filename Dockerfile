@@ -27,5 +27,9 @@ COPY --from=builder /app/package.json ./package.json
 # node_modules全体をコピー(prisma CLIの依存関係をすべて含めるため)
 COPY --from=builder /app/node_modules ./node_modules
 
+# Seed（prisma/seed.ts）が src 配下のモジュールを import するため
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+
 EXPOSE 3000
 CMD ["node", "server.js"]
