@@ -5,15 +5,50 @@ import { SettingRepository, UpsertSettingInput } from "@/server/repositories/set
 vi.mock("@/lib/prisma", () => ({
     prisma: {
         setting: {
+            findMany: vi.fn(),
             upsert: vi.fn(),
         },
     },
 }));
 
+const mockedFindMany = vi.mocked(prisma.setting.findMany);
 const mockedUpsert = vi.mocked(prisma.setting.upsert);
 
 beforeEach(() => {
     vi.clearAllMocks();
+});
+
+describe("SettingRepository.findLatest", () => {
+    const expectedQuery = {
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: {
+            id: true,
+            title: true,
+            imageUrl: true,
+            createdAt: true,
+            user: { select: { username: true } },
+            barrel: { select: { name: true, weight: true, price: true } },
+            shaft: { select: { name: true, price: true } },
+            flight: { select: { name: true, price: true } },
+            tip: { select: { name: true, price: true } },
+        },
+    };
+
+    it("新着順(同時刻はid順)に、表示に必要な項目だけを指定件数取得する", async () => {
+        mockedFindMany.mockResolvedValue([]);
+
+        await SettingRepository.findLatest(4);
+
+        expect(mockedFindMany).toHaveBeenCalledWith({ ...expectedQuery, take: 4 });
+    });
+
+    it("件数を省略すると全件を取得する", async () => {
+        mockedFindMany.mockResolvedValue([]);
+
+        await SettingRepository.findLatest();
+
+        expect(mockedFindMany).toHaveBeenCalledWith({ ...expectedQuery, take: undefined });
+    });
 });
 
 describe("SettingRepository.upsert", () => {
