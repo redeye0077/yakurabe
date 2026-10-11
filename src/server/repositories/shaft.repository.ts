@@ -9,7 +9,12 @@ export const ShaftRepository = {
     });
   },
 
-  async create(data: CreateShaftInput) {
-    return prisma.shaft.create({ data });
+  // Seedで固定idを使って登録するため、同じidがあれば更新する
+  async upsert(id: string, data: CreateShaftInput) {
+    return prisma.shaft.upsert({
+      where: { id },
+      create: { id, ...data },
+      update: data,
+    });
   },
 };

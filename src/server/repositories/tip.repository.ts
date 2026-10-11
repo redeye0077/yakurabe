@@ -9,7 +9,12 @@ export const TipRepository = {
     });
   },
 
-  async create(data: CreateTipInput) {
-    return prisma.tip.create({ data });
+  // Seedで固定idを使って登録するため、同じidがあれば更新する
+  async upsert(id: string, data: CreateTipInput) {
+    return prisma.tip.upsert({
+      where: { id },
+      create: { id, ...data },
+      update: data,
+    });
   },
 };

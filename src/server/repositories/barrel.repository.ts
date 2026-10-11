@@ -9,7 +9,12 @@ export const BarrelRepository = {
     });
   },
 
-  async create(data: CreateBarrelInput) {
-    return prisma.barrel.create({ data });
+  // Seedで固定idを使って登録するため、同じidがあれば更新する
+  async upsert(id: string, data: CreateBarrelInput) {
+    return prisma.barrel.upsert({
+      where: { id },
+      create: { id, ...data },
+      update: data,
+    });
   },
 };

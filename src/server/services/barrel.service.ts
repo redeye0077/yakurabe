@@ -18,8 +18,8 @@ export const BarrelService = {
     }));
   },
 
-  // Seed専用。APIからは公開しない。
-  async create(data: CreateBarrelInput) {
-    return BarrelRepository.create(data);
+  // Seed専用。APIからは公開しない。Seedを再実行しても重複しないよう固定idでupsertする
+  async upsert(id: string, data: CreateBarrelInput) {
+    return BarrelRepository.upsert(id, data);
   },
 };

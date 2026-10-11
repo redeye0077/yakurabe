@@ -6,12 +6,12 @@ import { TipRepository } from "@/server/repositories/tip.repository";
 vi.mock("@/server/repositories/tip.repository", () => ({
     TipRepository: {
         findAll: vi.fn(),
-        create: vi.fn(),
+        upsert: vi.fn(),
     },
 }));
 
 const mockedFindAll = vi.mocked(TipRepository.findAll);
-const mockedCreate = vi.mocked(TipRepository.create);
+const mockedUpsert = vi.mocked(TipRepository.upsert);
 
 function createMockTip(overrides: Partial<Tip> = {}): Tip {
     return {
@@ -67,8 +67,8 @@ describe("TipService.listAll", () => {
     });
 });
 
-describe("TipService.create", () => {
-    it("受け取った入力をそのままRepositoryに渡す", async () => {
+describe("TipService.upsert", () => {
+    it("受け取ったidと入力をそのままRepositoryに渡す", async () => {
         const input = {
             name: "テストチップ No.5",
             maker: "テストメーカー",
@@ -77,8 +77,8 @@ describe("TipService.create", () => {
             threadSize: "NO_5" as const,
         };
 
-        await TipService.create(input);
+        await TipService.upsert("tip-1", input);
 
-        expect(mockedCreate).toHaveBeenCalledWith(input);
+        expect(mockedUpsert).toHaveBeenCalledWith("tip-1", input);
     });
 });
