@@ -27,6 +27,8 @@ const settingListItemSelect = {
   tip: { select: { name: true, price: true } },
 } satisfies Prisma.SettingSelect;
 
+export type SettingListItemRecord = Prisma.SettingGetPayload<{ select: typeof settingListItemSelect }>;
+
 export const SettingRepository = {
   // 新着順。take を省略すると全件を返す
   async findLatest(take?: number) {
@@ -34,6 +36,15 @@ export const SettingRepository = {
       // 投稿日時が同じでも表示順が揺れないよう、idで順序を確定させる
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take,
+      select: settingListItemSelect,
+    });
+  },
+
+  // マイページ用。指定したユーザーの投稿を新着順で全件返す
+  async findByUserId(userId: string) {
+    return prisma.setting.findMany({
+      where: { userId },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: settingListItemSelect,
     });
   },

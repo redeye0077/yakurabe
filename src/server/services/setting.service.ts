@@ -1,11 +1,9 @@
-import { SettingRepository, UpsertSettingInput } from "@/server/repositories/setting.repository";
+import { SettingListItemRecord, SettingRepository, UpsertSettingInput } from "@/server/repositories/setting.repository";
 import { SettingListItemDto } from "@/server/dto/setting.dto";
 import { calcTotalPrice } from "@/lib/setting-price";
 
-type FoundSettingListItem = Awaited<ReturnType<typeof SettingRepository.findLatest>>[number];
-
 // 一覧カード用のDTOに変換する。合計価格は保存していないので、ここで算出する
-function toListItemDto(setting: FoundSettingListItem): SettingListItemDto {
+function toListItemDto(setting: SettingListItemRecord): SettingListItemDto {
   return {
     id: setting.id,
     title: setting.title,
@@ -25,6 +23,13 @@ export const SettingService = {
   // 一覧・トップの新着用。limit を省略すると全件を返す
   async listLatest(options: { limit?: number } = {}): Promise<SettingListItemDto[]> {
     const settings = await SettingRepository.findLatest(options.limit);
+
+    return settings.map(toListItemDto);
+  },
+
+  // マイページ用。指定したユーザーの投稿を新着順で全件返す
+  async listByUser(options: { userId: string }): Promise<SettingListItemDto[]> {
+    const settings = await SettingRepository.findByUserId(options.userId);
 
     return settings.map(toListItemDto);
   },

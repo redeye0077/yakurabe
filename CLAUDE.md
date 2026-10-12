@@ -96,8 +96,8 @@ Repository (Prismaを直接操作するのはここだけ)
 src/
   app/
     (main)/                     # ヘッダー付きページ (トップ, 一覧, 詳細など)
+      mypage/                   # マイページ配下 (ヘッダーを付けるため (main) に含める。URLは /mypage)
     login/ register/ verify/    # 認証関連ページ (ヘッダー無し。app直下に置く)
-    mypage/                     # マイページ配下
     api/
       settings/[id]/route.ts
       ...
