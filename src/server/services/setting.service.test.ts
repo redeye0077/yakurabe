@@ -1,18 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SettingService } from "@/server/services/setting.service";
-import { SettingRepository, UpsertSettingInput } from "@/server/repositories/setting.repository";
+import { SettingListItemRecord, SettingRepository, UpsertSettingInput } from "@/server/repositories/setting.repository";
 
 vi.mock("@/server/repositories/setting.repository", () => ({
     SettingRepository: {
         findLatest: vi.fn(),
+        findByUserId: vi.fn(),
         upsert: vi.fn(),
     },
 }));
 
 const mockedFindLatest = vi.mocked(SettingRepository.findLatest);
+const mockedFindByUserId = vi.mocked(SettingRepository.findByUserId);
 const mockedUpsert = vi.mocked(SettingRepository.upsert);
 
-type FoundSetting = Awaited<ReturnType<typeof SettingRepository.findLatest>>[number];
+type FoundSetting = SettingListItemRecord;
 
 function createFoundSetting(overrides: Partial<FoundSetting> = {}): FoundSetting {
     return {
@@ -83,6 +85,45 @@ describe("SettingService.listLatest", () => {
         const [result] = await SettingService.listLatest();
 
         expect(result.imageUrl).toBeNull();
+    });
+});
+
+describe("SettingService.listByUser", () => {
+    it("userIdをRepositoryに渡し、一覧用のDTOに変換して返す", async () => {
+        mockedFindByUserId.mockResolvedValue([
+            createFoundSetting(),
+            createFoundSetting({ id: "setting-2", shaft: null, flight: { name: "一体型フライト", price: 1980 } }),
+        ]);
+
+        const result = await SettingService.listByUser({ userId: "user-1" });
+
+        expect(mockedFindByUserId).toHaveBeenCalledWith("user-1");
+        expect(result).toHaveLength(2);
+        expect(result[0]).toEqual({
+            id: "setting-1",
+            title: "テストセッティング",
+            imageUrl: "/images/samples/test.jpg",
+            barrelName: "テストバレル",
+            shaftName: "テストシャフト",
+            flightName: "テストフライト",
+            tipName: "テストチップ",
+            barrelWeight: 18,
+            totalPrice: 17600 + 4180 + 1080 + 770,
+            userName: "テストユーザー",
+            createdAt: "2026-10-01T00:00:00.000Z",
+        });
+        // シャフトがnullでも一覧と同じく合計価格からシャフト分を除く
+        expect(result[1].shaftName).toBeNull();
+        expect(result[1].totalPrice).toBe(17600 + 1980 + 770);
+    });
+
+    it("投稿が0件の場合は空配列を返す", async () => {
+        mockedFindByUserId.mockResolvedValue([]);
+
+        const result = await SettingService.listByUser({ userId: "user-without-posts" });
+
+        expect(mockedFindByUserId).toHaveBeenCalledWith("user-without-posts");
+        expect(result).toEqual([]);
     });
 });
 

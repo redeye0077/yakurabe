@@ -29,6 +29,20 @@ describe("SettingGrid", () => {
         expect(screen.queryByRole("link")).not.toBeInTheDocument();
     });
 
+    it("0件の場合、emptyMessageを渡すとその文言を表示する", () => {
+        render(<SettingGrid settings={[]} headingLevel={3} emptyMessage="まだ投稿がありません" />);
+
+        expect(screen.getByText("まだ投稿がありません")).toBeInTheDocument();
+        expect(screen.queryByText("まだセッティングが投稿されていません")).not.toBeInTheDocument();
+    });
+
+    it("1件以上ある場合はemptyMessageを表示しない", () => {
+        render(<SettingGrid settings={[createSetting("1")]} headingLevel={3} emptyMessage="まだ投稿がありません" />);
+
+        expect(screen.getAllByRole("article")).toHaveLength(1);
+        expect(screen.queryByText("まだ投稿がありません")).not.toBeInTheDocument();
+    });
+
     it("渡された件数だけカードを表示する", () => {
         render(<SettingGrid settings={[createSetting("1"), createSetting("2"), createSetting("3")]} headingLevel={2} />);
 
