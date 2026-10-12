@@ -5,11 +5,11 @@ import userEvent from "@testing-library/user-event";
 import { renderWithQueryClient } from "@/test/renderWithQueryClient";
 import LoginPage from "@/app/login/page";
 
-const pushMock = vi.fn();
+const hardNavigateMock = vi.fn();
 const signInMock = vi.fn();
 
-vi.mock("next/navigation", () => ({
-    useRouter: () => ({ push: pushMock }),
+vi.mock("@/lib/navigation", () => ({
+    hardNavigate: (...args: unknown[]) => hardNavigateMock(...args),
 }));
 
 vi.mock("next-auth/react", () => ({
@@ -18,7 +18,17 @@ vi.mock("next-auth/react", () => ({
 
 beforeEach(() => {
     vi.clearAllMocks();
+    window.history.replaceState({}, "", "/login");
 });
+
+async function submitValidLogin() {
+    const user = userEvent.setup();
+    renderWithQueryClient(<LoginPage />);
+
+    await user.type(screen.getByLabelText("メールアドレス"), "test@example.com");
+    await user.type(screen.getByLabelText("パスワード"), "Password123!");
+    await user.click(screen.getByRole("button", { name: "ログイン" }));
+}
 
 describe("LoginPage", () => {
     it("空欄で送信するとバリデーションエラーが表示され、signInは呼ばれない", async () => {
@@ -34,7 +44,7 @@ describe("LoginPage", () => {
         expect(signInMock).not.toHaveBeenCalled();
     });
 
-    it("ログインに成功したら/へ遷移する", async () => {
+    it("ログインに成功したら、callbackUrlが無ければページを読み込み直して/へ遷移する", async () => {
         signInMock.mockResolvedValue({ error: undefined, ok: true });
         const user = userEvent.setup();
         renderWithQueryClient(<LoginPage />);
@@ -43,12 +53,30 @@ describe("LoginPage", () => {
         await user.type(screen.getByLabelText("パスワード"), "Password123!");
         await user.click(screen.getByRole("button", { name: "ログイン" }));
 
-        await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/"));
+        await waitFor(() => expect(hardNavigateMock).toHaveBeenCalledWith("/"));
         expect(signInMock).toHaveBeenCalledWith("credentials", {
             email: "test@example.com",
             password: "Password123!",
             redirect: false,
         });
+    });
+
+    it("同じオリジンのcallbackUrlがあれば、そのパスへ遷移する", async () => {
+        window.history.replaceState({}, "", `/login?callbackUrl=${encodeURIComponent(`${window.location.origin}/mypage`)}`);
+        signInMock.mockResolvedValue({ error: undefined, ok: true });
+
+        await submitValidLogin();
+
+        await waitFor(() => expect(hardNavigateMock).toHaveBeenCalledWith("/mypage"));
+    });
+
+    it("callbackUrlが外部のURLなら/へ遷移する", async () => {
+        window.history.replaceState({}, "", `/login?callbackUrl=${encodeURIComponent("https://evil.com/mypage")}`);
+        signInMock.mockResolvedValue({ error: undefined, ok: true });
+
+        await submitValidLogin();
+
+        await waitFor(() => expect(hardNavigateMock).toHaveBeenCalledWith("/"));
     });
 
     it("認証に失敗したらエラーメッセージを表示する", async () => {
@@ -63,7 +91,7 @@ describe("LoginPage", () => {
         expect(
             await screen.findByText("メールアドレスまたはパスワードが違います")
         ).toBeInTheDocument();
-        expect(pushMock).not.toHaveBeenCalled();
+        expect(hardNavigateMock).not.toHaveBeenCalled();
     });
 
     it("未認証ならその旨と再送ページへのリンクを表示する", async () => {
@@ -84,7 +112,7 @@ describe("LoginPage", () => {
         expect(
             screen.getByRole("link", { name: "確認メールを再送する" })
         ).toHaveAttribute("href", "/verify/resend");
-        expect(pushMock).not.toHaveBeenCalled();
+        expect(hardNavigateMock).not.toHaveBeenCalled();
     });
 
     it("パスワード違いでは再送リンクを表示しない", async () => {
@@ -126,7 +154,7 @@ describe("LoginPage", () => {
         expect(
             screen.queryByText("メールアドレスまたはパスワードが違います")
         ).not.toBeInTheDocument();
-        expect(pushMock).not.toHaveBeenCalled();
+        expect(hardNavigateMock).not.toHaveBeenCalled();
     });
 
     it("signInが例外を投げた場合(通信失敗など)も共通のエラーメッセージを表示する", async () => {
@@ -141,6 +169,6 @@ describe("LoginPage", () => {
         expect(
             await screen.findByText("エラーが発生しました。時間をおいて再度お試しください")
         ).toBeInTheDocument();
-        expect(pushMock).not.toHaveBeenCalled();
+        expect(hardNavigateMock).not.toHaveBeenCalled();
     });
 });
