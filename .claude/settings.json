@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(docker volume prune:*)",
+      "Bash(docker system prune:*)",
+      "Bash(docker compose down -v:*)",
+      "Bash(docker compose down --volumes:*)"
+    ]
+  }
+}
