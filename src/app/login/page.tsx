@@ -4,12 +4,13 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { loginSchema } from "@/schemas/auth";
 import { LOGIN_ERROR_CODE } from "@/lib/auth-error-codes";
+import { resolveCallbackUrl } from "@/lib/callback-url";
+import { hardNavigate } from "@/lib/navigation";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +48,6 @@ class LoginError extends Error {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginFormValues>({
@@ -86,7 +86,10 @@ export default function LoginPage() {
       return result;
     },
     onSuccess: () => {
-      router.push("/"); // 遷移先は後で確定
+      // ログイン前にprefetchされたリダイレクト(例: /mypage → /login)がルーターキャッシュに残るため、
+      // クライアント側の遷移ではなくページを丸ごと読み込み直す
+      const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl");
+      hardNavigate(resolveCallbackUrl(callbackUrl, window.location.origin));
     },
   });
 

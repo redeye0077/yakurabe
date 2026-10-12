@@ -216,3 +216,5 @@ npm run typecheck          # tsc --noEmit
 - Service層のロジックが薄いからといってRepositoryを飛ばしてController→Prismaを直接呼ぶ
 - shadcnの`components/ui`配下のファイルを直接改変する(必要ならラップする別コンポーネントを作る)
 - 確認なしにPrismaスキーマのフィールド削除・型変更を含むマイグレーションを実行する
+- 確認なしにDocker全体に影響する操作(`docker volume prune` / `docker system prune` / `docker compose down -v` など)を実行する。
+  ほかのプロジェクトのボリューム(prune)や、このリポジトリの DB のデータ(down -v)が消えるため、実行前に必ず確認を取る
