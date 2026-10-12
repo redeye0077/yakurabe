@@ -2,24 +2,31 @@ import { SettingRepository, UpsertSettingInput } from "@/server/repositories/set
 import { SettingListItemDto } from "@/server/dto/setting.dto";
 import { calcTotalPrice } from "@/lib/setting-price";
 
+type FoundSettingListItem = Awaited<ReturnType<typeof SettingRepository.findLatest>>[number];
+
+// 一覧カード用のDTOに変換する。合計価格は保存していないので、ここで算出する
+function toListItemDto(setting: FoundSettingListItem): SettingListItemDto {
+  return {
+    id: setting.id,
+    title: setting.title,
+    imageUrl: setting.imageUrl,
+    barrelName: setting.barrel.name,
+    shaftName: setting.shaft?.name ?? null,
+    flightName: setting.flight.name,
+    tipName: setting.tip.name,
+    barrelWeight: setting.barrel.weight,
+    totalPrice: calcTotalPrice(setting),
+    userName: setting.user.username,
+    createdAt: setting.createdAt.toISOString(),
+  };
+}
+
 export const SettingService = {
   // 一覧・トップの新着用。limit を省略すると全件を返す
   async listLatest(options: { limit?: number } = {}): Promise<SettingListItemDto[]> {
     const settings = await SettingRepository.findLatest(options.limit);
 
-    return settings.map((setting) => ({
-      id: setting.id,
-      title: setting.title,
-      imageUrl: setting.imageUrl,
-      barrelName: setting.barrel.name,
-      shaftName: setting.shaft?.name ?? null,
-      flightName: setting.flight.name,
-      tipName: setting.tip.name,
-      barrelWeight: setting.barrel.weight,
-      totalPrice: calcTotalPrice(setting),
-      userName: setting.user.username,
-      createdAt: setting.createdAt.toISOString(),
-    }));
+    return settings.map(toListItemDto);
   },
 
   // Seed専用。APIからは公開しない。Seedを再実行しても重複しないよう固定idでupsertする
