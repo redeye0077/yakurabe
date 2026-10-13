@@ -308,7 +308,6 @@ async function seedSampleSettings() {
       description:
         "サンプルとして登録しているセッティングです。シャフトとフライトをフィット規格でそろえ、スピンシャフトで飛びを安定させる組み合わせ。",
       imageUrl: null,
-      tag: "STABILITY",
       barrelId: "seed-barrel-01", // DISCOVERY LABEL Jeff Smith 2BA
       shaftId: "seed-shaft-02", // Fit Shaft COLOR Carbon ノーマル スピン 24.0mm
       flightId: "seed-flight-03", // Fit Flight AIR × Ami Komiyama ver.4
@@ -322,7 +321,6 @@ async function seedSampleSettings() {
       description:
         "サンプルとして登録しているセッティングです。ストレートバレルに汎用規格のL-SHaftとL-Flightを合わせた組み合わせ。",
       imageUrl: null,
-      tag: "STRAIGHT",
       barrelId: "seed-barrel-03", // KATANA Houju 2BA
       shaftId: "seed-shaft-01", // L-SHaft Carbon ロック スリム 37.0mm
       flightId: "seed-flight-01", // L-Flight PRO DYNASTY Sachika ver.1 スモール
@@ -336,7 +334,6 @@ async function seedSampleSettings() {
       description:
         "サンプルとして登録しているセッティングです。シャフト一体型フライトを使うため、シャフトは選んでいません。",
       imageUrl: null,
-      tag: "BALANCE",
       barrelId: "seed-barrel-04", // Mao ver.5 2BA 18g Cherry Red
       shaftId: null,
       flightId: "seed-flight-02", // GAME OVER K-FLEX スタンダード ブラック 26.0mm(一体型)
@@ -350,7 +347,6 @@ async function seedSampleSettings() {
       description:
         "サンプルとして登録しているセッティングです。シャフトとフライトをエイト規格でそろえ、消耗品を手頃な価格に抑えた組み合わせ。",
       imageUrl: null,
-      tag: "COST_PERFORMANCE",
       barrelId: "seed-barrel-05", // Undisputed ROMERO Type4 2BA
       shaftId: "seed-shaft-04", // 8FLIGHT シャフト レギュラー FIXED ホワイト 29.5mm
       flightId: "seed-flight-04", // 8FLIGHT スリム

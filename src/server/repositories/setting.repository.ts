@@ -1,12 +1,11 @@
-import type { Prisma, Tag } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type UpsertSettingInput = {
   userId: string;
   title: string;
-  description: string;
+  description: string | null;
   imageUrl: string | null;
-  tag: Tag;
   barrelId: string;
   shaftId: string | null;
   flightId: string;

@@ -134,7 +134,6 @@ describe("SettingService.upsert", () => {
             title: "テストセッティング",
             description: "テスト",
             imageUrl: null,
-            tag: "BALANCE",
             barrelId: "barrel-1",
             shaftId: null,
             flightId: "flight-1",
