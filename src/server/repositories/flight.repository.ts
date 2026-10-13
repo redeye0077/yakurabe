@@ -9,6 +9,14 @@ export const FlightRepository = {
     });
   },
 
+  // セッティング登録時に、存在確認と一体型かどうか・規格の判定に使う。無ければ null を返す
+  async findById(id: string) {
+    return prisma.flight.findUnique({
+      where: { id },
+      select: { id: true, flightType: true, flightSystem: true },
+    });
+  },
+
   // Seedで固定idを使って登録するため、同じidがあれば更新する
   async upsert(id: string, data: CreateFlightInput) {
     return prisma.flight.upsert({

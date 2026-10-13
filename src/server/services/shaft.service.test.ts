@@ -40,15 +40,15 @@ describe("ShaftService.listAll", () => {
     it("Repositoryの全件取得を呼び、DTOの形に変換された結果を返す", async () => {
         mockedFindAll.mockResolvedValue([
             createMockShaft({ id: "shaft-1", name: "テストシャフトA", price: 660 }),
-            createMockShaft({ id: "shaft-2", name: "テストシャフトB", price: 1320 }),
+            createMockShaft({ id: "shaft-2", name: "テストシャフトB", price: 1320, flightSystem: "FIT" }),
         ]);
 
         const result = await ShaftService.listAll();
 
         expect(mockedFindAll).toHaveBeenCalledTimes(1);
         expect(result).toEqual([
-            { id: "shaft-1", name: "テストシャフトA", price: 660 },
-            { id: "shaft-2", name: "テストシャフトB", price: 1320 },
+            { id: "shaft-1", name: "テストシャフトA", price: 660, flightSystem: "UNIVERSAL" },
+            { id: "shaft-2", name: "テストシャフトB", price: 1320, flightSystem: "FIT" },
         ]);
     });
 
@@ -66,7 +66,7 @@ describe("ShaftService.listAll", () => {
         const result = await ShaftService.listAll();
 
         expect(Object.keys(result[0]).sort()).toEqual(
-            ["id", "name", "price"].sort()
+            ["id", "name", "price", "flightSystem"].sort()
         );
     });
 });

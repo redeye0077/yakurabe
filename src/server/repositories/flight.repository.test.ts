@@ -6,12 +6,14 @@ vi.mock("@/lib/prisma", () => ({
     prisma: {
         flight: {
             findMany: vi.fn(),
+            findUnique: vi.fn(),
             upsert: vi.fn(),
         },
     },
 }));
 
 const mockedFindMany = vi.mocked(prisma.flight.findMany);
+const mockedFindUnique = vi.mocked(prisma.flight.findUnique);
 const mockedUpsert = vi.mocked(prisma.flight.upsert);
 
 beforeEach(() => {
@@ -26,6 +28,19 @@ describe("FlightRepository.findAll", () => {
 
         expect(mockedFindMany).toHaveBeenCalledWith({
             orderBy: [{ name: "asc" }, { id: "asc" }],
+        });
+    });
+});
+
+describe("FlightRepository.findById", () => {
+    it("idで1件を、判定に必要な項目だけ取得する", async () => {
+        mockedFindUnique.mockResolvedValue(null);
+
+        await FlightRepository.findById("flight-1");
+
+        expect(mockedFindUnique).toHaveBeenCalledWith({
+            where: { id: "flight-1" },
+            select: { id: true, flightType: true, flightSystem: true },
         });
     });
 });

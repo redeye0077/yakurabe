@@ -13,6 +13,9 @@ export type UpsertSettingInput = {
   createdAt: Date;
 };
 
+// 登録フォームからの新規作成用。createdAt は DB の既定値(現在時刻)に任せる
+export type CreateSettingRecordInput = Omit<UpsertSettingInput, "createdAt">;
+
 // 一覧カードの表示に必要な項目。新着一覧とマイページで共通に使う
 const settingListItemSelect = {
   id: true,
@@ -45,6 +48,13 @@ export const SettingRepository = {
       where: { userId },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: settingListItemSelect,
+    });
+  },
+
+  async create(data: CreateSettingRecordInput) {
+    return prisma.setting.create({
+      data,
+      select: { id: true },
     });
   },
 
