@@ -111,7 +111,7 @@ model Setting {
   userId      String
   title       String
   // 任意。未入力時は null
-  description String?  @db.Text
+  description String?  @db.VarChar(191)
   // 任意。未設定時は画面側で DartMark を表示する
   imageUrl    String?
   barrelId    String
