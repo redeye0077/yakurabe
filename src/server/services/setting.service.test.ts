@@ -240,6 +240,17 @@ describe("SettingService.create", () => {
             await expectRuleError(SettingService.create("user-1", createInput()), "shaftId");
             expect(mockedCreate).not.toHaveBeenCalled();
         });
+
+        it("成型フライトなのに規格がnullなら、シャフトを指定しても規格不一致として shaftId のエラーにし、作成しない", async () => {
+            mockValidMoldedProducts();
+            mockedFindFlight.mockResolvedValue({ id: "flight-1", flightType: "MOLDED", flightSystem: null });
+
+            const error = await SettingService.create("user-1", createInput()).catch((e: unknown) => e);
+            expect(error).toBeInstanceOf(SettingRuleError);
+            expect((error as SettingRuleError).field).toBe("shaftId");
+            expect((error as SettingRuleError).message).toBe("選択したフライトと規格が合わないシャフトです");
+            expect(mockedCreate).not.toHaveBeenCalled();
+        });
     });
 
     describe("③ 一体型フライトとシャフトの有無", () => {
