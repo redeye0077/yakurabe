@@ -16,6 +16,7 @@ export const FlightService = {
       name: flight.name,
       price: flight.price,
       flightType: flight.flightType,
+      flightSystem: flight.flightSystem,
     }));
   },
 

@@ -1,18 +1,20 @@
-import type { Prisma, Tag } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type UpsertSettingInput = {
   userId: string;
   title: string;
-  description: string;
+  description: string | null;
   imageUrl: string | null;
-  tag: Tag;
   barrelId: string;
   shaftId: string | null;
   flightId: string;
   tipId: string;
   createdAt: Date;
 };
+
+// 登録フォームからの新規作成用。createdAt は DB の既定値(現在時刻)に任せる
+export type CreateSettingRecordInput = Omit<UpsertSettingInput, "createdAt">;
 
 // 一覧カードの表示に必要な項目。新着一覧とマイページで共通に使う
 const settingListItemSelect = {
@@ -46,6 +48,13 @@ export const SettingRepository = {
       where: { userId },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: settingListItemSelect,
+    });
+  },
+
+  async create(data: CreateSettingRecordInput) {
+    return prisma.setting.create({
+      data,
+      select: { id: true },
     });
   },
 
