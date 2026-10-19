@@ -49,7 +49,7 @@ MVPの期日(paizaBランク対策と並行するための開発期間短縮)を
 | フレームワーク | Next.js (App Router, API Routes) |
 | UI | React, Tailwind CSS, shadcn/ui |
 | 状態管理(クライアント) | Zustand |
-| フォーム | React Hook Form + Zod |
+| フォーム | ログイン・新規登録は React Hook Form + Zod。セッティング登録は useActionState + Server Action(検証は Server 側の Zod) |
 | データフェッチ | TanStack Query (React Query) |
 | DB | MySQL |
 | ORM | Prisma |
@@ -135,12 +135,6 @@ src/
       setting/                  # セッティング関連コンポーネント
       product/                  # 商品情報モーダル/アコーディオン(独立ページ用ではない)
       user/
-  hooks/                        # カスタムフック (React Query hooksなど)
-    queries/
-      useSettings.ts
-      useProducts.ts
-    mutations/
-      useCreateSetting.ts
   stores/                       # Zustandストア(本当にグローバル状態が必要な場合のみ)
   schemas/                      # Zodスキーマ (フォームバリデーション、API入出力の両方で使う)
   lib/
@@ -176,12 +170,16 @@ prisma/
   - Repository層: Prismaのエラーはそのままthrowしてよい
   - Service層: ビジネスルール違反は独自のエラークラス(例: `NotFoundError`, `ValidationError`)をthrowする
   - Controller層: 独自エラークラスをcatchしてHTTPステータスにマッピングする
-- セッティング登録フォームでのバレル/シャフト/フライト/チップ選択は、単純な`<select>`
-  (プルダウン)ではなく、名前で絞り込める検索付きセレクト(shadcnの`Command` +
-  `Popover`によるComboboxパターン)を使うこと。商品の全件を親のServer Componentから
-  propsで受け取り、フォーカス時に全件を表示し、入力に応じて画面側だけで絞り込む
-  (検索のたびにサーバーへ問い合わせない)。候補が0件の場合は「該当する商品が見つかりません」とだけ表示し、商品追加の
-  リクエスト機能や他の代替手段は用意しない(商品はマスタデータとして運営側でのみ追加する)
+- セッティング登録フォームでのバレル/シャフト/フライト/チップ選択は、MVPではネイティブの
+  `<select>`(プルダウン)を使う。商品の全件は親のServer Componentからpropsで受け取る
+  - 商品が増えたら、名前で絞り込める検索付きセレクト(shadcnの`Command` + `Popover`による
+    Comboboxパターン)に移す(11月以降)。移すときは入力に応じて画面側だけで絞り込み
+    (検索のたびにサーバーへ問い合わせない)、候補が0件の場合は「該当する商品が見つかりません」とだけ表示する
+  - 商品追加のリクエスト機能や他の代替手段は用意しない(商品はマスタデータとして運営側でのみ追加する)
+- `<select>`を含むフォームでは、Server Actionを`<form action>`に直接渡さない。React 19 が
+  Actionの完了後にフォームをリセットし、selectの選択が先頭のoptionに戻るため。
+  `onSubmit`で`preventDefault()`し、`startTransition`の中から`useActionState`のactionを呼ぶ
+  (例: `components/features/setting/setting-form.tsx`)
 
 ## 実装時の進め方(重要)
 
