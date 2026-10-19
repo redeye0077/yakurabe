@@ -110,10 +110,10 @@ model Setting {
   id          String   @id @default(cuid())
   userId      String
   title       String
-  description String   @db.Text
+  // 任意。未入力時は null
+  description String?  @db.VarChar(191)
   // 任意。未設定時は画面側で DartMark を表示する
   imageUrl    String?
-  tag         Tag
   barrelId    String
   shaftId     String?
   flightId    String
@@ -150,13 +150,4 @@ enum FlightSystem {
 enum TipThreadSize {
   TWO_BA // 2BA(ソフトダーツで一般的な規格)
   NO_5 // No.5
-}
-
-enum Tag {
-  STABILITY
-  COST_PERFORMANCE
-  LIGHTWEIGHT
-  FLIGHT_DISTANCE
-  STRAIGHT
-  BALANCE
 }

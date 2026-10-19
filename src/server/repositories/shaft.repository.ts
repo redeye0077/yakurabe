@@ -9,6 +9,14 @@ export const ShaftRepository = {
     });
   },
 
+  // セッティング登録時に、存在確認とフライトとの規格の照合に使う。無ければ null を返す
+  async findById(id: string) {
+    return prisma.shaft.findUnique({
+      where: { id },
+      select: { id: true, flightSystem: true },
+    });
+  },
+
   // Seedで固定idを使って登録するため、同じidがあれば更新する
   async upsert(id: string, data: CreateShaftInput) {
     return prisma.shaft.upsert({

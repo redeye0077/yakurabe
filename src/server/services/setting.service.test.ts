@@ -1,18 +1,74 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { SettingService } from "@/server/services/setting.service";
+import { CreateSettingServiceInput, SettingService } from "@/server/services/setting.service";
 import { SettingListItemRecord, SettingRepository, UpsertSettingInput } from "@/server/repositories/setting.repository";
+import { BarrelRepository } from "@/server/repositories/barrel.repository";
+import { ShaftRepository } from "@/server/repositories/shaft.repository";
+import { FlightRepository } from "@/server/repositories/flight.repository";
+import { TipRepository } from "@/server/repositories/tip.repository";
+import { SettingRuleError, SettingRuleField } from "@/server/errors/setting.error";
 
 vi.mock("@/server/repositories/setting.repository", () => ({
     SettingRepository: {
         findLatest: vi.fn(),
         findByUserId: vi.fn(),
+        create: vi.fn(),
         upsert: vi.fn(),
     },
+}));
+vi.mock("@/server/repositories/barrel.repository", () => ({
+    BarrelRepository: { findById: vi.fn() },
+}));
+vi.mock("@/server/repositories/shaft.repository", () => ({
+    ShaftRepository: { findById: vi.fn() },
+}));
+vi.mock("@/server/repositories/flight.repository", () => ({
+    FlightRepository: { findById: vi.fn() },
+}));
+vi.mock("@/server/repositories/tip.repository", () => ({
+    TipRepository: { findById: vi.fn() },
 }));
 
 const mockedFindLatest = vi.mocked(SettingRepository.findLatest);
 const mockedFindByUserId = vi.mocked(SettingRepository.findByUserId);
+const mockedCreate = vi.mocked(SettingRepository.create);
 const mockedUpsert = vi.mocked(SettingRepository.upsert);
+const mockedFindBarrel = vi.mocked(BarrelRepository.findById);
+const mockedFindShaft = vi.mocked(ShaftRepository.findById);
+const mockedFindFlight = vi.mocked(FlightRepository.findById);
+const mockedFindTip = vi.mocked(TipRepository.findById);
+
+// 成型フライト(FIT規格)と、規格が合うシャフトの組み合わせ。業務ルールの正常系の基準にする
+function mockValidMoldedProducts() {
+    mockedFindBarrel.mockResolvedValue({ id: "barrel-1" });
+    mockedFindShaft.mockResolvedValue({ id: "shaft-1", flightSystem: "FIT" });
+    mockedFindFlight.mockResolvedValue({ id: "flight-1", flightType: "MOLDED", flightSystem: "FIT" });
+    mockedFindTip.mockResolvedValue({ id: "tip-1" });
+}
+
+// シャフト一体型フライト(規格を持たない)の組み合わせ
+function mockValidIntegratedProducts() {
+    mockValidMoldedProducts();
+    mockedFindFlight.mockResolvedValue({ id: "flight-2", flightType: "SHAFT_INTEGRATED", flightSystem: null });
+}
+
+function createInput(overrides: Partial<CreateSettingServiceInput> = {}): CreateSettingServiceInput {
+    return {
+        title: "テストセッティング",
+        description: "テスト",
+        barrelId: "barrel-1",
+        shaftId: "shaft-1",
+        flightId: "flight-1",
+        tipId: "tip-1",
+        ...overrides,
+    };
+}
+
+// SettingRuleError が、指定した項目のエラーとして throw されることを確かめる
+async function expectRuleError(promise: Promise<unknown>, field: SettingRuleField) {
+    const error = await promise.catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(SettingRuleError);
+    expect((error as SettingRuleError).field).toBe(field);
+}
 
 type FoundSetting = SettingListItemRecord;
 
@@ -127,23 +183,131 @@ describe("SettingService.listByUser", () => {
     });
 });
 
+describe("SettingService.create", () => {
+    describe("正常系", () => {
+        it("成型フライトと規格が合うシャフトなら、投稿者と画像なし(null)を付けて作成し、idを返す", async () => {
+            mockValidMoldedProducts();
+            mockedCreate.mockResolvedValue({ id: "setting-new" });
+            const input = createInput();
+
+            const result = await SettingService.create("user-1", input);
+
+            expect(mockedCreate).toHaveBeenCalledWith({ ...input, userId: "user-1", imageUrl: null });
+            expect(result).toEqual({ id: "setting-new" });
+        });
+
+        it("一体型フライトでシャフトがnullなら作成し、シャフトは取得しない", async () => {
+            mockValidIntegratedProducts();
+            mockedCreate.mockResolvedValue({ id: "setting-new" });
+            const input = createInput({ shaftId: null, flightId: "flight-2" });
+
+            await SettingService.create("user-1", input);
+
+            expect(mockedFindShaft).not.toHaveBeenCalled();
+            expect(mockedCreate).toHaveBeenCalledWith({ ...input, userId: "user-1", imageUrl: null });
+        });
+
+        it("特徴・使用感がnullでも作成する", async () => {
+            mockValidMoldedProducts();
+            mockedCreate.mockResolvedValue({ id: "setting-new" });
+
+            await SettingService.create("user-1", createInput({ description: null }));
+
+            expect(mockedCreate).toHaveBeenCalledWith(expect.objectContaining({ description: null }));
+        });
+    });
+
+    describe("① 選んだ商品が存在しない", () => {
+        it.each([
+            { name: "バレル", field: "barrelId", mockNotFound: () => mockedFindBarrel.mockResolvedValue(null) },
+            { name: "シャフト", field: "shaftId", mockNotFound: () => mockedFindShaft.mockResolvedValue(null) },
+            { name: "フライト", field: "flightId", mockNotFound: () => mockedFindFlight.mockResolvedValue(null) },
+            { name: "チップ", field: "tipId", mockNotFound: () => mockedFindTip.mockResolvedValue(null) },
+        ] as const)("$name が見つからなければ $field のエラーにし、作成しない", async ({ field, mockNotFound }) => {
+            mockValidMoldedProducts();
+            mockNotFound();
+
+            await expectRuleError(SettingService.create("user-1", createInput()), field);
+            expect(mockedCreate).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("② シャフトとフライトの規格", () => {
+        it("規格が一致しなければ shaftId のエラーにし、作成しない", async () => {
+            mockValidMoldedProducts();
+            mockedFindShaft.mockResolvedValue({ id: "shaft-1", flightSystem: "UNIVERSAL" });
+
+            await expectRuleError(SettingService.create("user-1", createInput()), "shaftId");
+            expect(mockedCreate).not.toHaveBeenCalled();
+        });
+
+        it("成型フライトなのに規格がnullなら、シャフトを指定しても規格不一致として shaftId のエラーにし、作成しない", async () => {
+            mockValidMoldedProducts();
+            mockedFindFlight.mockResolvedValue({ id: "flight-1", flightType: "MOLDED", flightSystem: null });
+
+            const error = await SettingService.create("user-1", createInput()).catch((e: unknown) => e);
+            expect(error).toBeInstanceOf(SettingRuleError);
+            expect((error as SettingRuleError).field).toBe("shaftId");
+            expect((error as SettingRuleError).message).toBe("選択したフライトと規格が合わないシャフトです");
+            expect(mockedCreate).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("③ 一体型フライトとシャフトの有無", () => {
+        it("一体型フライトにシャフトを指定したら shaftId のエラーにし、作成しない", async () => {
+            mockValidIntegratedProducts();
+
+            await expectRuleError(
+                SettingService.create("user-1", createInput({ flightId: "flight-2" })),
+                "shaftId",
+            );
+            expect(mockedCreate).not.toHaveBeenCalled();
+        });
+
+        it("一体型でないフライトでシャフトがnullなら shaftId のエラーにし、作成しない", async () => {
+            mockValidMoldedProducts();
+
+            await expectRuleError(SettingService.create("user-1", createInput({ shaftId: null })), "shaftId");
+            expect(mockedCreate).not.toHaveBeenCalled();
+        });
+    });
+
+    it("Repositoryの想定外のエラーはそのままthrowする", async () => {
+        const dbError = new Error("DB接続エラー");
+        mockValidMoldedProducts();
+        mockedFindBarrel.mockRejectedValue(dbError);
+
+        await expect(SettingService.create("user-1", createInput())).rejects.toBe(dbError);
+        expect(mockedCreate).not.toHaveBeenCalled();
+    });
+});
+
 describe("SettingService.upsert", () => {
-    it("受け取ったidと入力をそのままRepositoryに渡す", async () => {
-        const input: UpsertSettingInput = {
-            userId: "user-1",
-            title: "テストセッティング",
-            description: "テスト",
-            imageUrl: null,
-            tag: "BALANCE",
-            barrelId: "barrel-1",
-            shaftId: null,
-            flightId: "flight-1",
-            tipId: "tip-1",
-            createdAt: new Date("2026-10-01T00:00:00.000Z"),
-        };
+    const input: UpsertSettingInput = {
+        userId: "user-1",
+        title: "テストセッティング",
+        description: "テスト",
+        imageUrl: null,
+        barrelId: "barrel-1",
+        shaftId: "shaft-1",
+        flightId: "flight-1",
+        tipId: "tip-1",
+        createdAt: new Date("2026-10-01T00:00:00.000Z"),
+    };
+
+    it("業務ルールを満たせば、受け取ったidと入力をそのままRepositoryに渡す", async () => {
+        mockValidMoldedProducts();
 
         await SettingService.upsert("setting-1", input);
 
         expect(mockedUpsert).toHaveBeenCalledWith("setting-1", input);
+    });
+
+    it("登録フォームと同じ業務ルールで検証し、違反していればupsertしない", async () => {
+        mockValidMoldedProducts();
+        mockedFindShaft.mockResolvedValue({ id: "shaft-1", flightSystem: "UNIVERSAL" });
+
+        await expectRuleError(SettingService.upsert("setting-1", input), "shaftId");
+        expect(mockedUpsert).not.toHaveBeenCalled();
     });
 });

@@ -9,6 +9,14 @@ export const TipRepository = {
     });
   },
 
+  // セッティング登録時に、選んだチップが存在するかの確認に使う。無ければ null を返す
+  async findById(id: string) {
+    return prisma.tip.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+  },
+
   // Seedで固定idを使って登録するため、同じidがあれば更新する
   async upsert(id: string, data: CreateTipInput) {
     return prisma.tip.upsert({

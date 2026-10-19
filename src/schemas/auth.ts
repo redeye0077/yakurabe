@@ -3,7 +3,7 @@ import { z } from "zod";
 
 // 制御文字・不可視文字を検出する正規表現
 // (半角制御文字、ゼロ幅文字、BOMなどを弾く)
-const CONTROL_CHAR_REGEX = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\uFEFF]/;
+export const CONTROL_CHAR_REGEX = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\uFEFF]/;
 
 export const registerSchema = z.object({
   email: z

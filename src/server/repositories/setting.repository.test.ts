@@ -1,17 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { SettingRepository, UpsertSettingInput } from "@/server/repositories/setting.repository";
+import { CreateSettingRecordInput, SettingRepository, UpsertSettingInput } from "@/server/repositories/setting.repository";
 
 vi.mock("@/lib/prisma", () => ({
     prisma: {
         setting: {
             findMany: vi.fn(),
+            create: vi.fn(),
             upsert: vi.fn(),
         },
     },
 }));
 
 const mockedFindMany = vi.mocked(prisma.setting.findMany);
+const mockedCreate = vi.mocked(prisma.setting.create);
 const mockedUpsert = vi.mocked(prisma.setting.upsert);
 
 beforeEach(() => {
@@ -83,6 +85,28 @@ describe("SettingRepository.findByUserId", () => {
     });
 });
 
+describe("SettingRepository.create", () => {
+    it("受け取った入力で作成し、作成したセッティングのidだけを返す", async () => {
+        const data: CreateSettingRecordInput = {
+            userId: "user-1",
+            title: "テストセッティング",
+            description: null,
+            imageUrl: null,
+            barrelId: "barrel-1",
+            shaftId: "shaft-1",
+            flightId: "flight-1",
+            tipId: "tip-1",
+        };
+
+        await SettingRepository.create(data);
+
+        expect(mockedCreate).toHaveBeenCalledWith({
+            data,
+            select: { id: true },
+        });
+    });
+});
+
 describe("SettingRepository.upsert", () => {
     it("idで検索し、無ければidを付けて作成、あれば同じ内容で更新する", async () => {
         const data: UpsertSettingInput = {
@@ -90,7 +114,6 @@ describe("SettingRepository.upsert", () => {
             title: "テストセッティング",
             description: "テスト",
             imageUrl: null,
-            tag: "BALANCE",
             barrelId: "barrel-1",
             shaftId: null,
             flightId: "flight-1",

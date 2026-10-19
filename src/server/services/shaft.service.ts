@@ -14,6 +14,7 @@ export const ShaftService = {
       id: shaft.id,
       name: shaft.name,
       price: shaft.price,
+      flightSystem: shaft.flightSystem,
     }));
   },
 

@@ -68,12 +68,13 @@ describe("FlightService.listAll", () => {
 
         expect(mockedFindAll).toHaveBeenCalledTimes(1);
         expect(result).toEqual([
-            { id: "flight-1", name: "テストフライトA", price: 550, flightType: "MOLDED" },
+            { id: "flight-1", name: "テストフライトA", price: 550, flightType: "MOLDED", flightSystem: "UNIVERSAL" },
             {
                 id: "flight-2",
                 name: "テスト一体型フライト 27.5mm",
                 price: 1430,
                 flightType: "SHAFT_INTEGRATED",
+                flightSystem: null,
             },
         ]);
     });
@@ -92,7 +93,7 @@ describe("FlightService.listAll", () => {
         const result = await FlightService.listAll();
 
         expect(Object.keys(result[0]).sort()).toEqual(
-            ["id", "name", "price", "flightType"].sort()
+            ["id", "name", "price", "flightType", "flightSystem"].sort()
         );
     });
 });
