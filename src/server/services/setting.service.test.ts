@@ -5,14 +5,16 @@ import { BarrelRepository } from "@/server/repositories/barrel.repository";
 import { ShaftRepository } from "@/server/repositories/shaft.repository";
 import { FlightRepository } from "@/server/repositories/flight.repository";
 import { TipRepository } from "@/server/repositories/tip.repository";
-import { SettingRuleError, SettingRuleField } from "@/server/errors/setting.error";
+import { SettingNotFoundError, SettingRuleError, SettingRuleField } from "@/server/errors/setting.error";
 
 vi.mock("@/server/repositories/setting.repository", () => ({
     SettingRepository: {
         findLatest: vi.fn(),
         findByUserId: vi.fn(),
+        findOwnerById: vi.fn(),
         create: vi.fn(),
         upsert: vi.fn(),
+        delete: vi.fn(),
     },
 }));
 vi.mock("@/server/repositories/barrel.repository", () => ({
@@ -32,6 +34,8 @@ const mockedFindLatest = vi.mocked(SettingRepository.findLatest);
 const mockedFindByUserId = vi.mocked(SettingRepository.findByUserId);
 const mockedCreate = vi.mocked(SettingRepository.create);
 const mockedUpsert = vi.mocked(SettingRepository.upsert);
+const mockedFindOwnerById = vi.mocked(SettingRepository.findOwnerById);
+const mockedDelete = vi.mocked(SettingRepository.delete);
 const mockedFindBarrel = vi.mocked(BarrelRepository.findById);
 const mockedFindShaft = vi.mocked(ShaftRepository.findById);
 const mockedFindFlight = vi.mocked(FlightRepository.findById);
@@ -309,5 +313,38 @@ describe("SettingService.upsert", () => {
 
         await expectRuleError(SettingService.upsert("setting-1", input), "shaftId");
         expect(mockedUpsert).not.toHaveBeenCalled();
+    });
+});
+
+describe("SettingService.delete", () => {
+    it("自分の投稿なら、idと投稿者を指定して削除する", async () => {
+        mockedFindOwnerById.mockResolvedValue({ userId: "user-1" });
+        mockedDelete.mockResolvedValue(true);
+
+        await SettingService.delete("user-1", "setting-1");
+
+        expect(mockedFindOwnerById).toHaveBeenCalledWith("setting-1");
+        expect(mockedDelete).toHaveBeenCalledWith("setting-1", "user-1");
+    });
+
+    it("対象が存在しなければ SettingNotFoundError を throw し、削除しない", async () => {
+        mockedFindOwnerById.mockResolvedValue(null);
+
+        await expect(SettingService.delete("user-1", "setting-1")).rejects.toBeInstanceOf(SettingNotFoundError);
+        expect(mockedDelete).not.toHaveBeenCalled();
+    });
+
+    it("他人の投稿なら、存在しない場合と同じ SettingNotFoundError を throw し、削除しない", async () => {
+        mockedFindOwnerById.mockResolvedValue({ userId: "user-2" });
+
+        await expect(SettingService.delete("user-1", "setting-1")).rejects.toBeInstanceOf(SettingNotFoundError);
+        expect(mockedDelete).not.toHaveBeenCalled();
+    });
+
+    it("確認後に別の操作で削除されていた(Repository が false を返した)場合も SettingNotFoundError を throw する", async () => {
+        mockedFindOwnerById.mockResolvedValue({ userId: "user-1" });
+        mockedDelete.mockResolvedValue(false);
+
+        await expect(SettingService.delete("user-1", "setting-1")).rejects.toBeInstanceOf(SettingNotFoundError);
     });
 });

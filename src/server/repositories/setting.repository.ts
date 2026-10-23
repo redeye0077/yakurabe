@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type UpsertSettingInput = {
@@ -49,6 +49,27 @@ export const SettingRepository = {
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: settingListItemSelect,
     });
+  },
+
+  // 削除前の投稿者の確認用。存在しなければ null を返す
+  async findOwnerById(id: string) {
+    return prisma.setting.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+  },
+
+  // 指定したユーザーの投稿なら物理削除する。該当が無ければ(P2025)false を返す
+  async delete(id: string, userId: string): Promise<boolean> {
+    try {
+      await prisma.setting.delete({ where: { id, userId } });
+      return true;
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
+        return false;
+      }
+      throw e;
+    }
   },
 
   async create(data: CreateSettingRecordInput) {
