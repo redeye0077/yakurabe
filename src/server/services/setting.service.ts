@@ -9,7 +9,7 @@ import { ShaftRepository } from "@/server/repositories/shaft.repository";
 import { FlightRepository } from "@/server/repositories/flight.repository";
 import { TipRepository } from "@/server/repositories/tip.repository";
 import { SettingListItemDto } from "@/server/dto/setting.dto";
-import { SettingRuleError } from "@/server/errors/setting.error";
+import { SettingNotFoundError, SettingRuleError } from "@/server/errors/setting.error";
 import { calcTotalPrice } from "@/lib/setting-price";
 
 // 登録フォームから受け取る入力。投稿者はセッションから決め、画像はこのフェーズでは扱わない
@@ -99,6 +99,20 @@ export const SettingService = {
     await assertValidProducts(input);
 
     return SettingRepository.create({ ...input, userId, imageUrl: null });
+  },
+
+  // 自分の投稿の削除。対象が無い場合と他人の投稿の場合は、区別せず SettingNotFoundError を throw する
+  async delete(userId: string, id: string): Promise<void> {
+    const setting = await SettingRepository.findOwnerById(id);
+    if (!setting || setting.userId !== userId) {
+      throw new SettingNotFoundError();
+    }
+
+    // 確認してから削除するまでの間に、別の操作で削除された場合
+    const deleted = await SettingRepository.delete(id, userId);
+    if (!deleted) {
+      throw new SettingNotFoundError();
+    }
   },
 
   // Seed専用。APIからは公開しない。Seedを再実行しても重複しないよう固定idでupsertする

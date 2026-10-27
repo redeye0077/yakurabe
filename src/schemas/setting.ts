@@ -51,3 +51,13 @@ export type CreateSettingInput = z.infer<typeof createSettingSchema>;
 
 // エラーを表示する入力項目
 export type CreateSettingField = keyof CreateSettingInput;
+
+// セッティングの削除。id の形式(cuid)までは見ず、存在と投稿者の確認は Service 側で行う
+export const deleteSettingSchema = z.object({
+  id: z
+    .string({ error: "削除するセッティングが正しくありません" })
+    .trim()
+    .min(1, "削除するセッティングが正しくありません"),
+});
+
+export type DeleteSettingInput = z.infer<typeof deleteSettingSchema>;

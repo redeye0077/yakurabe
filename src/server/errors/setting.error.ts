@@ -11,3 +11,12 @@ export class SettingRuleError extends Error {
     this.field = field;
   }
 }
+
+// 対象のセッティングが存在しない、または操作しようとしたユーザーの投稿ではない場合。
+// 他人の投稿の存在を知らせないよう、2つを区別しない
+export class SettingNotFoundError extends Error {
+  constructor(message = "セッティングが見つかりません") {
+    super(message);
+    this.name = "SettingNotFoundError";
+  }
+}
