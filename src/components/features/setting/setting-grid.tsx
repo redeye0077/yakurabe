@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { DartMark } from "@/components/common/dart-mark";
 import { SettingCard } from "@/components/features/setting/setting-card";
 import type { SettingListItemDto } from "@/server/dto/setting.dto";
@@ -8,6 +9,8 @@ type SettingGridProps = {
   headingLevel: 2 | 3;
   // 0件のときの文言。マイページなど、ページに合わせて変えたい場合に渡す
   emptyMessage?: string;
+  // カードごとの操作ボタン。マイページの削除ボタンなど、必要なページだけが渡す
+  renderActions?: (setting: SettingListItemDto) => ReactNode;
 };
 
 // セッティングカードの並び。トップの新着・一覧ページ・マイページで共通に使う
@@ -15,6 +18,7 @@ export function SettingGrid({
   settings,
   headingLevel,
   emptyMessage = "まだセッティングが投稿されていません",
+  renderActions,
 }: SettingGridProps) {
   if (settings.length === 0) {
     return (
@@ -28,7 +32,12 @@ export function SettingGrid({
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
       {settings.map((setting) => (
-        <SettingCard key={setting.id} setting={setting} headingLevel={headingLevel} />
+        <SettingCard
+          key={setting.id}
+          setting={setting}
+          headingLevel={headingLevel}
+          actions={renderActions?.(setting)}
+        />
       ))}
     </div>
   );

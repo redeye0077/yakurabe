@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { SettingService } from "@/server/services/setting.service";
 import { SettingGrid } from "@/components/features/setting/setting-grid";
+import { SettingDeleteButton } from "@/components/features/setting/setting-delete-button";
 
 export default async function MyPage() {
   // DBの最新を毎回表示する。ビルド時に事前生成させない
@@ -31,6 +32,9 @@ export default async function MyPage() {
           settings={settings}
           headingLevel={3}
           emptyMessage="まだ投稿がありません"
+          renderActions={(setting) => (
+            <SettingDeleteButton id={setting.id} title={setting.title} />
+          )}
         />
       </div>
     </section>
