@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
 import { DartMark } from "@/components/common/dart-mark";
 import type { SettingListItemDto } from "@/server/dto/setting.dto";
@@ -6,6 +7,8 @@ type SettingCardProps = {
   setting: SettingListItemDto;
   // トップは h2「新着のセッティング」の下なので 3、一覧ページは h1 の直下なので 2
   headingLevel: 2 | 3;
+  // カード下部に差し込む操作ボタン(マイページの削除など)。トップ・一覧では渡さない
+  actions?: ReactNode;
 };
 
 // サーバーがUTCで動いていても日本の日付で表示する
@@ -16,7 +19,7 @@ const postedDateFormat = new Intl.DateTimeFormat("ja-JP", {
   day: "2-digit",
 });
 
-export function SettingCard({ setting, headingLevel }: SettingCardProps) {
+export function SettingCard({ setting, headingLevel, actions }: SettingCardProps) {
   const Heading = headingLevel === 2 ? "h2" : "h3";
   const parts = [
     { label: "バレル", name: setting.barrelName },
@@ -71,6 +74,11 @@ export function SettingCard({ setting, headingLevel }: SettingCardProps) {
             {postedDateFormat.format(new Date(setting.createdAt))}
           </time>
         </div>
+        {actions && (
+          <div className="mt-2.5 flex justify-end gap-2 border-t border-brand-border pt-2.5">
+            {actions}
+          </div>
+        )}
       </div>
     </article>
   );
