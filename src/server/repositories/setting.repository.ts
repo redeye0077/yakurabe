@@ -31,6 +31,22 @@ const settingListItemSelect = {
 
 export type SettingListItemRecord = Prisma.SettingGetPayload<{ select: typeof settingListItemSelect }>;
 
+// 編集フォームの初期値と、編集前の投稿者の確認に必要な項目
+const settingEditSelect = {
+  userId: true,
+  title: true,
+  description: true,
+  barrelId: true,
+  shaftId: true,
+  flightId: true,
+  tipId: true,
+} satisfies Prisma.SettingSelect;
+
+export type SettingEditRecord = Prisma.SettingGetPayload<{ select: typeof settingEditSelect }>;
+
+// 編集フォームからの更新用。投稿者・画像・投稿日時は変更しない
+export type UpdateSettingRecordInput = Omit<CreateSettingRecordInput, "userId" | "imageUrl">;
+
 export const SettingRepository = {
   // 新着順。take を省略すると全件を返す
   async findLatest(take?: number) {
@@ -59,6 +75,14 @@ export const SettingRepository = {
     });
   },
 
+  // 編集用。存在しなければ null を返す
+  async findById(id: string) {
+    return prisma.setting.findUnique({
+      where: { id },
+      select: settingEditSelect,
+    });
+  },
+
   // 指定したユーザーの投稿なら物理削除する。該当が無ければ(P2025)false を返す
   async delete(id: string, userId: string): Promise<boolean> {
     try {
@@ -67,6 +91,22 @@ export const SettingRepository = {
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
         return false;
+      }
+      throw e;
+    }
+  },
+
+  // 指定したユーザーの投稿なら更新し、idを返す。該当が無ければ(P2025)null を返す
+  async update(id: string, userId: string, data: UpdateSettingRecordInput): Promise<{ id: string } | null> {
+    try {
+      return await prisma.setting.update({
+        where: { id, userId },
+        data,
+        select: { id: true },
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
+        return null;
       }
       throw e;
     }
