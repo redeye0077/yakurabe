@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { SettingService } from "@/server/services/setting.service";
 import { SettingGrid } from "@/components/features/setting/setting-grid";
+import { SettingEditButton } from "@/components/features/setting/setting-edit-button";
 import { SettingDeleteButton } from "@/components/features/setting/setting-delete-button";
 
 export default async function MyPage() {
@@ -33,7 +34,10 @@ export default async function MyPage() {
           headingLevel={3}
           emptyMessage="まだ投稿がありません"
           renderActions={(setting) => (
-            <SettingDeleteButton id={setting.id} title={setting.title} />
+            <>
+              <SettingEditButton id={setting.id} />
+              <SettingDeleteButton id={setting.id} title={setting.title} />
+            </>
           )}
         />
       </div>

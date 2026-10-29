@@ -61,3 +61,6 @@ export const deleteSettingSchema = z.object({
 });
 
 export type DeleteSettingInput = z.infer<typeof deleteSettingSchema>;
+
+// 編集対象のセッティングの id。形式が誤っている場合は Controller で「見つからない」として扱う
+export const settingIdSchema = z.string().trim().min(1);
