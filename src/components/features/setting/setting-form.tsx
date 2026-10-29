@@ -1,11 +1,12 @@
 "use client";
 
 import { startTransition, useActionState, useState, type FormEvent } from "react";
-import {
-  createSettingAction,
-  type CreateSettingActionState,
-} from "@/app/(main)/settings/new/actions";
 import type { CreateSettingField } from "@/schemas/setting";
+import type {
+  SettingFormAction,
+  SettingFormActionState,
+  SettingFormValues,
+} from "@/types/setting-form";
 import type { BarrelListItemDto } from "@/server/dto/barrel.dto";
 import type { ShaftListItemDto } from "@/server/dto/shaft.dto";
 import type { FlightListItemDto } from "@/server/dto/flight.dto";
@@ -16,6 +17,12 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 type SettingFormProps = {
+  // 登録では createSettingAction、編集では id を bind した updateSettingAction を渡す
+  action: SettingFormAction;
+  // 編集時の初期値。省略すると空のフォーム(登録)になる
+  defaultValues?: SettingFormValues;
+  submitLabel?: string;
+  pendingLabel?: string;
   barrels: BarrelListItemDto[];
   shafts: ShaftListItemDto[];
   flights: FlightListItemDto[];
@@ -31,15 +38,25 @@ const errorClass = "text-[13px] text-destructive";
 const fieldId = (field: CreateSettingField) => `setting-${field}`;
 const errorId = (field: CreateSettingField) => `setting-${field}-error`;
 
-export function SettingForm({ barrels, shafts, flights, tips }: SettingFormProps) {
-  const [state, formAction, isPending] = useActionState<CreateSettingActionState, FormData>(
-    createSettingAction,
+export function SettingForm({
+  action,
+  defaultValues,
+  submitLabel = "登録する",
+  pendingLabel = "登録中...",
+  barrels,
+  shafts,
+  flights,
+  tips,
+}: SettingFormProps) {
+  const [state, formAction, isPending] = useActionState<SettingFormActionState, FormData>(
+    action,
     null
   );
 
-  // フライトとシャフトは選択に応じて表示を切り替えるため state で管理する
-  const [flightId, setFlightId] = useState("");
-  const [shaftId, setShaftId] = useState("");
+  // フライトとシャフトは選択に応じて表示を切り替えるため state で管理する。
+  // 初期値は編集時の値をそのまま使い、初期表示ではシャフトのリセット(handleFlightChange)を通さない
+  const [flightId, setFlightId] = useState(defaultValues?.flightId ?? "");
+  const [shaftId, setShaftId] = useState(defaultValues?.shaftId ?? "");
 
   const selectedFlight = flights.find((flight) => flight.id === flightId);
   const shaftOptions = filterShaftsByFlight(shafts, selectedFlight);
@@ -65,7 +82,8 @@ export function SettingForm({ barrels, shafts, flights, tips }: SettingFormProps
   }
 
   const errors = state?.fieldErrors ?? {};
-  const values = state?.values;
+  // エラーで戻ってきたら送信した値、それ以外は編集時の初期値(登録では undefined)を表示する
+  const values = state?.values ?? defaultValues;
 
   // エラーがある項目に aria-invalid と aria-describedby を付ける
   const errorProps = (field: CreateSettingField) =>
@@ -82,6 +100,12 @@ export function SettingForm({ barrels, shafts, flights, tips }: SettingFormProps
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      {state?.message && (
+        <p role="alert" className={errorClass}>
+          {state.message}
+        </p>
+      )}
+
       <div className="flex flex-col gap-2">
         <Label htmlFor={fieldId("title")} className={labelClass}>
           タイトル
@@ -206,7 +230,7 @@ export function SettingForm({ barrels, shafts, flights, tips }: SettingFormProps
         disabled={isPending}
         className="mt-1 h-12 w-full rounded-[10px] bg-brand-green text-[15px] font-semibold tracking-[0.02em] text-brand-cream hover:bg-brand-green/90"
       >
-        {isPending ? "登録中..." : "登録する"}
+        {isPending ? pendingLabel : submitLabel}
       </Button>
     </form>
   );
