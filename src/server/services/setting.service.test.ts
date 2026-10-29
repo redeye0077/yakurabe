@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CreateSettingServiceInput, SettingService } from "@/server/services/setting.service";
-import { SettingListItemRecord, SettingRepository, UpsertSettingInput } from "@/server/repositories/setting.repository";
+import {
+    SettingEditRecord,
+    SettingListItemRecord,
+    SettingRepository,
+    UpsertSettingInput,
+} from "@/server/repositories/setting.repository";
 import { BarrelRepository } from "@/server/repositories/barrel.repository";
 import { ShaftRepository } from "@/server/repositories/shaft.repository";
 import { FlightRepository } from "@/server/repositories/flight.repository";
@@ -12,7 +17,9 @@ vi.mock("@/server/repositories/setting.repository", () => ({
         findLatest: vi.fn(),
         findByUserId: vi.fn(),
         findOwnerById: vi.fn(),
+        findById: vi.fn(),
         create: vi.fn(),
+        update: vi.fn(),
         upsert: vi.fn(),
         delete: vi.fn(),
     },
@@ -36,6 +43,8 @@ const mockedCreate = vi.mocked(SettingRepository.create);
 const mockedUpsert = vi.mocked(SettingRepository.upsert);
 const mockedFindOwnerById = vi.mocked(SettingRepository.findOwnerById);
 const mockedDelete = vi.mocked(SettingRepository.delete);
+const mockedFindById = vi.mocked(SettingRepository.findById);
+const mockedUpdate = vi.mocked(SettingRepository.update);
 const mockedFindBarrel = vi.mocked(BarrelRepository.findById);
 const mockedFindShaft = vi.mocked(ShaftRepository.findById);
 const mockedFindFlight = vi.mocked(FlightRepository.findById);
@@ -87,6 +96,19 @@ function createFoundSetting(overrides: Partial<FoundSetting> = {}): FoundSetting
         shaft: { name: "テストシャフト", price: 4180 },
         flight: { name: "テストフライト", price: 1080 },
         tip: { name: "テストチップ", price: 770 },
+        ...overrides,
+    };
+}
+
+function createEditRecord(overrides: Partial<SettingEditRecord> = {}): SettingEditRecord {
+    return {
+        userId: "user-1",
+        title: "テストセッティング",
+        description: "テスト",
+        barrelId: "barrel-1",
+        shaftId: "shaft-1",
+        flightId: "flight-1",
+        tipId: "tip-1",
         ...overrides,
     };
 }
@@ -346,5 +368,88 @@ describe("SettingService.delete", () => {
         mockedDelete.mockResolvedValue(false);
 
         await expect(SettingService.delete("user-1", "setting-1")).rejects.toBeInstanceOf(SettingNotFoundError);
+    });
+});
+
+describe("SettingService.getForEdit", () => {
+    it("自分の投稿なら、投稿者を除いた編集フォームの初期値を返す", async () => {
+        mockedFindById.mockResolvedValue(createEditRecord({ description: null, shaftId: null }));
+
+        const result = await SettingService.getForEdit("user-1", "setting-1");
+
+        expect(mockedFindById).toHaveBeenCalledWith("setting-1");
+        expect(result).toEqual({
+            title: "テストセッティング",
+            description: null,
+            barrelId: "barrel-1",
+            shaftId: null,
+            flightId: "flight-1",
+            tipId: "tip-1",
+        });
+    });
+
+    it("対象が存在しなければ SettingNotFoundError を throw する", async () => {
+        mockedFindById.mockResolvedValue(null);
+
+        await expect(SettingService.getForEdit("user-1", "setting-1")).rejects.toBeInstanceOf(SettingNotFoundError);
+    });
+
+    it("他人の投稿なら、存在しない場合と同じ SettingNotFoundError を throw する", async () => {
+        mockedFindById.mockResolvedValue(createEditRecord({ userId: "user-2" }));
+
+        await expect(SettingService.getForEdit("user-1", "setting-1")).rejects.toBeInstanceOf(SettingNotFoundError);
+    });
+});
+
+describe("SettingService.update", () => {
+    it("自分の投稿で業務ルールを満たせば、idと投稿者を指定して入力どおりに更新する", async () => {
+        mockedFindById.mockResolvedValue(createEditRecord());
+        mockValidMoldedProducts();
+        mockedUpdate.mockResolvedValue({ id: "setting-1" });
+        const input = createInput({ title: "更新後のセッティング", description: null });
+
+        await SettingService.update("user-1", "setting-1", input);
+
+        expect(mockedFindById).toHaveBeenCalledWith("setting-1");
+        expect(mockedUpdate).toHaveBeenCalledWith("setting-1", "user-1", input);
+    });
+
+    it("対象が存在しなければ SettingNotFoundError を throw し、業務ルールの確認も更新もしない", async () => {
+        mockedFindById.mockResolvedValue(null);
+
+        await expect(SettingService.update("user-1", "setting-1", createInput())).rejects.toBeInstanceOf(
+            SettingNotFoundError,
+        );
+        expect(mockedFindBarrel).not.toHaveBeenCalled();
+        expect(mockedUpdate).not.toHaveBeenCalled();
+    });
+
+    it("他人の投稿なら、存在しない場合と同じ SettingNotFoundError を throw し、業務ルールの確認も更新もしない", async () => {
+        mockedFindById.mockResolvedValue(createEditRecord({ userId: "user-2" }));
+
+        await expect(SettingService.update("user-1", "setting-1", createInput())).rejects.toBeInstanceOf(
+            SettingNotFoundError,
+        );
+        expect(mockedFindBarrel).not.toHaveBeenCalled();
+        expect(mockedUpdate).not.toHaveBeenCalled();
+    });
+
+    it("登録と同じ業務ルールで検証し、違反していれば更新しない", async () => {
+        mockedFindById.mockResolvedValue(createEditRecord());
+        mockValidMoldedProducts();
+        mockedFindShaft.mockResolvedValue({ id: "shaft-1", flightSystem: "UNIVERSAL" });
+
+        await expectRuleError(SettingService.update("user-1", "setting-1", createInput()), "shaftId");
+        expect(mockedUpdate).not.toHaveBeenCalled();
+    });
+
+    it("確認後に別の操作で削除されていた(Repository が null を返した)場合は SettingNotFoundError を throw する", async () => {
+        mockedFindById.mockResolvedValue(createEditRecord());
+        mockValidMoldedProducts();
+        mockedUpdate.mockResolvedValue(null);
+
+        await expect(SettingService.update("user-1", "setting-1", createInput())).rejects.toBeInstanceOf(
+            SettingNotFoundError,
+        );
     });
 });

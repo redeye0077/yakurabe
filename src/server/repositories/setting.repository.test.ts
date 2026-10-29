@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { Prisma } from "@prisma/client";
+import { Prisma, type Setting } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { CreateSettingRecordInput, SettingRepository, UpsertSettingInput } from "@/server/repositories/setting.repository";
+import {
+    CreateSettingRecordInput,
+    SettingRepository,
+    UpdateSettingRecordInput,
+    UpsertSettingInput,
+} from "@/server/repositories/setting.repository";
 
 vi.mock("@/lib/prisma", () => ({
     prisma: {
@@ -9,6 +14,7 @@ vi.mock("@/lib/prisma", () => ({
             findMany: vi.fn(),
             findUnique: vi.fn(),
             create: vi.fn(),
+            update: vi.fn(),
             upsert: vi.fn(),
             delete: vi.fn(),
         },
@@ -18,6 +24,7 @@ vi.mock("@/lib/prisma", () => ({
 const mockedFindMany = vi.mocked(prisma.setting.findMany);
 const mockedFindUnique = vi.mocked(prisma.setting.findUnique);
 const mockedCreate = vi.mocked(prisma.setting.create);
+const mockedUpdate = vi.mocked(prisma.setting.update);
 const mockedUpsert = vi.mocked(prisma.setting.upsert);
 const mockedDelete = vi.mocked(prisma.setting.delete);
 
@@ -174,5 +181,84 @@ describe("SettingRepository.delete", () => {
         mockedDelete.mockRejectedValue(dbError);
 
         await expect(SettingRepository.delete("setting-1", "user-1")).rejects.toBe(dbError);
+    });
+});
+
+describe("SettingRepository.findById", () => {
+    it("idで検索し、編集フォームの初期値と投稿者の確認に必要な項目だけを取得する", async () => {
+        mockedFindUnique.mockResolvedValue(null);
+
+        await SettingRepository.findById("setting-1");
+
+        expect(mockedFindUnique).toHaveBeenCalledWith({
+            where: { id: "setting-1" },
+            select: {
+                userId: true,
+                title: true,
+                description: true,
+                barrelId: true,
+                shaftId: true,
+                flightId: true,
+                tipId: true,
+            },
+        });
+    });
+
+    it("見つかった場合は、select で指定した項目の値をそのまま返す", async () => {
+        const found = {
+            userId: "user-1",
+            title: "テストセッティング",
+            description: null,
+            barrelId: "barrel-1",
+            shaftId: null,
+            flightId: "flight-1",
+            tipId: "tip-1",
+        };
+        // モックの型は select を反映しないため Setting として渡す
+        mockedFindUnique.mockResolvedValue(found as Setting);
+
+        const result = await SettingRepository.findById("setting-1");
+
+        expect(result).toEqual(found);
+    });
+});
+
+describe("SettingRepository.update", () => {
+    const data: UpdateSettingRecordInput = {
+        title: "更新後のセッティング",
+        description: null,
+        barrelId: "barrel-2",
+        shaftId: null,
+        flightId: "flight-2",
+        tipId: "tip-2",
+    };
+
+    it("idと投稿者の両方で絞り込んで更新し、idだけを取得して返す", async () => {
+        // 実際の戻り値は select で指定した id だけ。モックの型は select を反映しないため Setting として渡す
+        mockedUpdate.mockResolvedValue({ id: "setting-1" } as Setting);
+
+        const result = await SettingRepository.update("setting-1", "user-1", data);
+
+        expect(mockedUpdate).toHaveBeenCalledWith({
+            where: { id: "setting-1", userId: "user-1" },
+            data,
+            select: { id: true },
+        });
+        expect(result).toEqual({ id: "setting-1" });
+    });
+
+    it("該当するセッティングが無い(P2025)場合は null を返す", async () => {
+        mockedUpdate.mockRejectedValue(createKnownRequestError("P2025"));
+
+        const result = await SettingRepository.update("setting-1", "user-1", data);
+
+        expect(result).toBeNull();
+    });
+
+    it("P2025 以外のエラーはそのまま throw する", async () => {
+        const dbError = createKnownRequestError("P2003");
+        mockedUpdate.mockRejectedValue(dbError);
+
+        await expect(SettingRepository.update("setting-1", "user-1", data)).rejects.toBe(dbError);
     });
 });

@@ -12,3 +12,13 @@ export type SettingListItemDto = {
   userName: string;
   createdAt: string; // ISO文字列
 };
+
+// 編集フォームの初期値。投稿者は Service で確認済みのため含めない
+export type SettingEditDto = {
+  title: string;
+  description: string | null;
+  barrelId: string;
+  shaftId: string | null; // シャフト一体型フライトの場合は null
+  flightId: string;
+  tipId: string;
+};

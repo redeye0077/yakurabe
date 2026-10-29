@@ -2,18 +2,22 @@ import {
   CreateSettingRecordInput,
   SettingListItemRecord,
   SettingRepository,
+  UpdateSettingRecordInput,
   UpsertSettingInput,
 } from "@/server/repositories/setting.repository";
 import { BarrelRepository } from "@/server/repositories/barrel.repository";
 import { ShaftRepository } from "@/server/repositories/shaft.repository";
 import { FlightRepository } from "@/server/repositories/flight.repository";
 import { TipRepository } from "@/server/repositories/tip.repository";
-import { SettingListItemDto } from "@/server/dto/setting.dto";
+import { SettingEditDto, SettingListItemDto } from "@/server/dto/setting.dto";
 import { SettingNotFoundError, SettingRuleError } from "@/server/errors/setting.error";
 import { calcTotalPrice } from "@/lib/setting-price";
 
 // 登録フォームから受け取る入力。投稿者はセッションから決め、画像はこのフェーズでは扱わない
 export type CreateSettingServiceInput = Omit<CreateSettingRecordInput, "userId" | "imageUrl">;
+
+// 編集フォームから受け取る入力。登録と同じ項目を全置換する
+export type UpdateSettingServiceInput = UpdateSettingRecordInput;
 
 type SettingProductIds = Pick<CreateSettingRecordInput, "barrelId" | "shaftId" | "flightId" | "tipId">;
 
@@ -99,6 +103,39 @@ export const SettingService = {
     await assertValidProducts(input);
 
     return SettingRepository.create({ ...input, userId, imageUrl: null });
+  },
+
+  // 編集フォームの初期値。対象が無い場合と他人の投稿の場合は、区別せず SettingNotFoundError を throw する
+  async getForEdit(userId: string, id: string): Promise<SettingEditDto> {
+    const setting = await SettingRepository.findById(id);
+    if (!setting || setting.userId !== userId) {
+      throw new SettingNotFoundError();
+    }
+
+    return {
+      title: setting.title,
+      description: setting.description,
+      barrelId: setting.barrelId,
+      shaftId: setting.shaftId,
+      flightId: setting.flightId,
+      tipId: setting.tipId,
+    };
+  },
+
+  // 自分の投稿の更新。投稿者を確認してから、登録と同じ業務ルールで検証して保存する
+  async update(userId: string, id: string, input: UpdateSettingServiceInput): Promise<void> {
+    const setting = await SettingRepository.findById(id);
+    if (!setting || setting.userId !== userId) {
+      throw new SettingNotFoundError();
+    }
+
+    await assertValidProducts(input);
+
+    // 確認してから更新するまでの間に、別の操作で削除された場合
+    const updated = await SettingRepository.update(id, userId, input);
+    if (!updated) {
+      throw new SettingNotFoundError();
+    }
   },
 
   // 自分の投稿の削除。対象が無い場合と他人の投稿の場合は、区別せず SettingNotFoundError を throw する
