@@ -11,6 +11,13 @@ export const SETTING_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as 
 
 export type SettingImageType = (typeof SETTING_IMAGE_TYPES)[number];
 
+// 画面・Zod・Service で共通に使う画像のエラー文言
+export const SETTING_IMAGE_TYPE_MESSAGE = "JPEG・PNG・WebP の画像を選択してください";
+export const SETTING_IMAGE_SIZE_MESSAGE = "画像は 5MB 以下にしてください";
+export const SETTING_IMAGE_UPLOAD_FAILED_MESSAGE =
+  "画像のアップロードに失敗しました。時間をおいて再度お試しください";
+export const SETTING_IMAGE_UNVERIFIED_MESSAGE = "画像を確認できませんでした。もう一度選択してください";
+
 /** 形式ごとの拡張子。保存先キーの拡張子はファイル名ではなく、この対応表で決める */
 export const SETTING_IMAGE_EXTENSIONS = {
   "image/jpeg": "jpg",

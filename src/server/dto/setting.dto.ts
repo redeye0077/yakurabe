@@ -23,3 +23,11 @@ export type SettingEditDto = {
   flightId: string;
   tipId: string;
 };
+
+// 画像のアップロード先。画面は url に fields と file を multipart/form-data で POST し、
+// 成功したら key をフォームの imageKey として送る
+export type SettingImageUploadDto = {
+  url: string;
+  fields: Record<string, string>;
+  key: string;
+};

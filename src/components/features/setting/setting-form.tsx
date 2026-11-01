@@ -1,17 +1,22 @@
 "use client";
 
-import { startTransition, useActionState, useState, type FormEvent } from "react";
+import { startTransition, useActionState, useMemo, useRef, useState, type FormEvent } from "react";
+import { unstable_rethrow } from "next/navigation";
 import type { CreateSettingField } from "@/schemas/setting";
 import type {
   SettingFormAction,
   SettingFormActionState,
   SettingFormValues,
+  SettingImageUploadAction,
 } from "@/types/setting-form";
 import type { BarrelListItemDto } from "@/server/dto/barrel.dto";
 import type { ShaftListItemDto } from "@/server/dto/shaft.dto";
 import type { FlightListItemDto } from "@/server/dto/flight.dto";
 import type { TipListItemDto } from "@/server/dto/tip.dto";
 import { filterShaftsByFlight, isShaftIntegrated } from "@/lib/shaft-compatibility";
+import { SETTING_IMAGE_TYPES, SETTING_IMAGE_UPLOAD_FAILED_MESSAGE } from "@/lib/setting-image";
+import { checkSettingImageFile, uploadSettingImage } from "@/lib/setting-image-upload";
+import { withFormError } from "@/lib/with-form-error";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -19,6 +24,8 @@ import { cn } from "@/lib/utils";
 type SettingFormProps = {
   // 登録では createSettingAction、編集では id を bind した updateSettingAction を渡す
   action: SettingFormAction;
+  // 画像のアップロード先を発行する Action。渡すと画像の入力欄を表示する(登録のみ。編集は画像を変更しない)
+  imageUploadAction?: SettingImageUploadAction;
   // 編集時の初期値。省略すると空のフォーム(登録)になる
   defaultValues?: SettingFormValues;
   submitLabel?: string;
@@ -40,6 +47,7 @@ const errorId = (field: CreateSettingField) => `setting-${field}-error`;
 
 export function SettingForm({
   action,
+  imageUploadAction,
   defaultValues,
   submitLabel = "登録する",
   pendingLabel = "登録中...",
@@ -48,10 +56,18 @@ export function SettingForm({
   flights,
   tips,
 }: SettingFormProps) {
+  // 保存の Action が例外を投げても error.tsx に飛ばさず、フォームのエラーとして表示する
+  const safeAction = useMemo(() => withFormError(action), [action]);
   const [state, formAction, isPending] = useActionState<SettingFormActionState, FormData>(
-    action,
+    safeAction,
     null
   );
+
+  // 画像のアップロード中(保存の Action を呼ぶ前)も送信ボタンを無効にする
+  const [isUploading, setIsUploading] = useState(false);
+  // 送信前の画面側の確認・アップロードで出た画像のエラー。サーバーから返った画像のエラーより優先して表示する
+  const [imageError, setImageError] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // フライトとシャフトは選択に応じて表示を切り替えるため state で管理する。
   // 初期値は編集時の値をそのまま使い、初期表示ではシャフトのリセット(handleFlightChange)を通さない
@@ -71,17 +87,66 @@ export function SettingForm({
     }
   }
 
+  /**
+   * 画像が選ばれていれば、保存の前にブラウザから S3 に直接アップロードし、保存先キーを imageKey として送る。
+   * ファイル本体は保存の Action に送らない(Server Action の本文サイズ上限を超えないようにするため)
+   */
+  async function uploadImage(formData: FormData): Promise<boolean> {
+    formData.delete("image");
+    const file = imageInputRef.current?.files?.[0];
+    if (!imageUploadAction || !file || file.size === 0) {
+      return true;
+    }
+
+    const checked = await checkSettingImageFile(file);
+    if (!checked.ok) {
+      setImageError(checked.message);
+      return false;
+    }
+
+    setIsUploading(true);
+    try {
+      const result = await imageUploadAction({ contentType: checked.type, size: file.size });
+      if (result.status === "invalid") {
+        setImageError(result.message);
+        return false;
+      }
+      // 未ログインなら画像なしで保存の Action を呼び、そちらでログイン画面へリダイレクトさせる
+      if (result.status === "success") {
+        await uploadSettingImage(result.upload, file);
+        formData.set("imageKey", result.upload.key);
+      }
+      return true;
+    } catch (error) {
+      unstable_rethrow(error);
+      console.error("[setting-form] 画像のアップロードに失敗しました", error);
+      setImageError(SETTING_IMAGE_UPLOAD_FAILED_MESSAGE);
+      return false;
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
   // <form action> に渡すと React 19 が Action の完了後にフォームをリセットし、
   // select が先頭の option に戻ってしまう(制御・非制御とも)。リセットさせないよう onSubmit から呼ぶ
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    setImageError(null);
+
+    if (!(await uploadImage(formData))) {
+      return;
+    }
     startTransition(() => {
       formAction(formData);
     });
   }
 
-  const errors = state?.fieldErrors ?? {};
+  const errors = {
+    ...state?.fieldErrors,
+    ...(imageError !== null && { imageKey: imageError }),
+  };
+  const isSubmitting = isPending || isUploading;
   // エラーで戻ってきたら送信した値、それ以外は編集時の初期値(登録では undefined)を表示する
   const values = state?.values ?? defaultValues;
 
@@ -103,6 +168,11 @@ export function SettingForm({
       {state?.message && (
         <p role="alert" className={errorClass}>
           {state.message}
+        </p>
+      )}
+      {state?.formError && (
+        <p role="alert" className={errorClass}>
+          {state.formError}
         </p>
       )}
 
@@ -225,12 +295,32 @@ export function SettingForm({
         {fieldError("description")}
       </div>
 
+      {imageUploadAction && (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={fieldId("imageKey")} className={labelClass}>
+            画像(任意)
+          </Label>
+          {/* 選択したファイルは送信時にアップロードする。エラーで戻っても選択は残り、次の送信でアップロードし直す */}
+          <input
+            ref={imageInputRef}
+            id={fieldId("imageKey")}
+            name="image"
+            type="file"
+            accept={SETTING_IMAGE_TYPES.join(",")}
+            className="text-[14px] text-brand-ink file:mr-3 file:rounded-[8px] file:border file:border-brand-border file:bg-white file:px-3 file:py-1.5 file:text-[13px]"
+            {...errorProps("imageKey")}
+          />
+          <p className="text-[12px] text-brand-muted">JPEG・PNG・WebP、5MB まで</p>
+          {fieldError("imageKey")}
+        </div>
+      )}
+
       <Button
         type="submit"
-        disabled={isPending}
+        disabled={isSubmitting}
         className="mt-1 h-12 w-full rounded-[10px] bg-brand-green text-[15px] font-semibold tracking-[0.02em] text-brand-cream hover:bg-brand-green/90"
       >
-        {isPending ? pendingLabel : submitLabel}
+        {isSubmitting ? pendingLabel : submitLabel}
       </Button>
     </form>
   );

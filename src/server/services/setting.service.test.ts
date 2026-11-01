@@ -10,7 +10,13 @@ import { BarrelRepository } from "@/server/repositories/barrel.repository";
 import { ShaftRepository } from "@/server/repositories/shaft.repository";
 import { FlightRepository } from "@/server/repositories/flight.repository";
 import { TipRepository } from "@/server/repositories/tip.repository";
-import { SettingNotFoundError, SettingRuleError, SettingRuleField } from "@/server/errors/setting.error";
+import {
+    SettingImageError,
+    SettingNotFoundError,
+    SettingRuleError,
+    SettingRuleField,
+} from "@/server/errors/setting.error";
+import type { ObjectInspection, ObjectStorage } from "@/server/storage/object-storage";
 import { S3ObjectStorage } from "@/server/storage/s3-object-storage";
 import { getObjectStorage } from "@/server/storage/get-object-storage";
 
@@ -24,6 +30,7 @@ vi.mock("@/server/repositories/setting.repository", () => ({
         update: vi.fn(),
         upsert: vi.fn(),
         delete: vi.fn(),
+        existsByImageKey: vi.fn(),
     },
 }));
 // 表示用 URL の組み立てだけを使うため、通信しない実装をそのまま使う(開発と同じ形の S3_PUBLIC_BASE_URL)
@@ -57,6 +64,7 @@ const mockedFindShaft = vi.mocked(ShaftRepository.findById);
 const mockedFindFlight = vi.mocked(FlightRepository.findById);
 const mockedFindTip = vi.mocked(TipRepository.findById);
 const mockedGetObjectStorage = vi.mocked(getObjectStorage);
+const mockedExistsByImageKey = vi.mocked(SettingRepository.existsByImageKey);
 
 const IMAGE_KEY = "settings/user-1/123e4567-e89b-42d3-a456-426614174000.webp";
 const IMAGE_URL = `${PUBLIC_BASE_URL}/${IMAGE_KEY}`;
@@ -94,6 +102,7 @@ function createInput(overrides: Partial<CreateSettingServiceInput> = {}): Create
         shaftId: "shaft-1",
         flightId: "flight-1",
         tipId: "tip-1",
+        imageKey: null,
         ...overrides,
     };
 }
@@ -505,5 +514,265 @@ describe("SettingService.update", () => {
         await expect(SettingService.update("user-1", "setting-1", createInput())).rejects.toBeInstanceOf(
             SettingNotFoundError,
         );
+    });
+});
+
+// 画像の確認・削除・発行を差し替えた保存先。表示用 URL は本物と同じ組み立てにする
+function useFakeStorage() {
+    const real = createStorage();
+    const storage = {
+        createPresignedUpload: vi.fn<ObjectStorage["createPresignedUpload"]>(),
+        inspect: vi.fn<ObjectStorage["inspect"]>(),
+        delete: vi.fn<ObjectStorage["delete"]>(),
+        publicUrl: (key: string) => real.publicUrl(key),
+    } satisfies ObjectStorage;
+    mockedGetObjectStorage.mockReturnValue(storage);
+    return storage;
+}
+
+const PNG_HEAD = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 0x49, 0x48, 0x44, 0x52]);
+const JPEG_HEAD = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1]);
+const PNG_KEY = "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png";
+
+function inspection(overrides: Partial<ObjectInspection> = {}): ObjectInspection {
+    return { contentType: "image/png", size: 2048, firstBytes: PNG_HEAD, ...overrides };
+}
+
+describe("SettingService.createImageUpload", () => {
+    it("本人の prefix のキーを作り、サイズ上限 5MB で署名付き POST を発行してキーと一緒に返す", async () => {
+        const storage = useFakeStorage();
+        storage.createPresignedUpload.mockResolvedValue({
+            url: "http://localhost:9090/yakurabe-dev",
+            fields: { Policy: "policy" },
+        });
+
+        const result = await SettingService.createImageUpload("user-1", "image/png");
+
+        expect(result.key).toMatch(/^settings\/user-1\/[0-9a-f-]{36}\.png$/);
+        expect(storage.createPresignedUpload).toHaveBeenCalledWith({
+            key: result.key,
+            contentType: "image/png",
+            maxBytes: 5 * 1024 * 1024,
+        });
+        expect(result).toEqual({
+            url: "http://localhost:9090/yakurabe-dev",
+            fields: { Policy: "policy" },
+            key: result.key,
+        });
+    });
+});
+
+describe("SettingService.create の画像", () => {
+    it("画像を確認してから、imageKey 付きで作成する", async () => {
+        mockValidMoldedProducts();
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection());
+        mockedCreate.mockResolvedValue({ id: "setting-new" });
+        const input = createInput({ imageKey: PNG_KEY });
+
+        const result = await SettingService.create("user-1", input);
+
+        expect(storage.inspect).toHaveBeenCalledWith(PNG_KEY);
+        expect(mockedCreate).toHaveBeenCalledWith({ ...input, userId: "user-1" });
+        expect(result).toEqual({ id: "setting-new" });
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("画像が無ければ確認しない", async () => {
+        mockValidMoldedProducts();
+        const storage = useFakeStorage();
+        mockedCreate.mockResolvedValue({ id: "setting-new" });
+
+        await SettingService.create("user-1", createInput());
+
+        expect(storage.inspect).not.toHaveBeenCalled();
+    });
+
+    it("商品の組み合わせが不正なら、画像を確認する前に SettingRuleError を throw する", async () => {
+        mockValidMoldedProducts();
+        mockedFindTip.mockResolvedValue(null);
+        const storage = useFakeStorage();
+
+        await expectRuleError(SettingService.create("user-1", createInput({ imageKey: PNG_KEY })), "tipId");
+        expect(storage.inspect).not.toHaveBeenCalled();
+    });
+
+    async function expectImageError(imageKey: string, message = "画像を確認できませんでした。もう一度選択してください") {
+        const error = await SettingService.create("user-1", createInput({ imageKey })).catch((e: unknown) => e);
+        expect(error).toBeInstanceOf(SettingImageError);
+        expect((error as SettingImageError).message).toBe(message);
+        expect(mockedCreate).not.toHaveBeenCalled();
+    }
+
+    it.each([
+        ["他人の prefix", "settings/user-2/123e4567-e89b-42d3-a456-426614174000.png"],
+        ["形が違う", "settings/user-1/image.png"],
+        ["prefix が違う", "uploads/user-1/123e4567-e89b-42d3-a456-426614174000.png"],
+    ])("キーが%sなら S3 を見ずに SettingImageError", async (_label, imageKey) => {
+        mockValidMoldedProducts();
+        const storage = useFakeStorage();
+
+        await expectImageError(imageKey);
+        expect(storage.inspect).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ["存在しない(inspect が null)", null, undefined],
+        ["0 バイト", inspection({ size: 0, firstBytes: new Uint8Array() }), undefined],
+        ["5MB 超", inspection({ size: 5 * 1024 * 1024 + 1 }), "画像は 5MB 以下にしてください"],
+        ["Content-Type がキーの拡張子と違う", inspection({ contentType: "image/jpeg" }), undefined],
+        ["Content-Type が無い", inspection({ contentType: undefined }), undefined],
+        ["中身がキーの拡張子と違う(JPEG)", inspection({ firstBytes: JPEG_HEAD }), undefined],
+        ["中身が画像でない", inspection({ firstBytes: new TextEncoder().encode("<!doctype html>") }), undefined],
+    ])("S3 上の画像が%sなら SettingImageError", async (_label, result, message) => {
+        mockValidMoldedProducts();
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(result);
+
+        await expectImageError(PNG_KEY, message);
+    });
+
+    it("ちょうど 5MB なら作成する", async () => {
+        mockValidMoldedProducts();
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection({ size: 5 * 1024 * 1024 }));
+        mockedCreate.mockResolvedValue({ id: "setting-new" });
+
+        await expect(SettingService.create("user-1", createInput({ imageKey: PNG_KEY }))).resolves.toEqual({
+            id: "setting-new",
+        });
+    });
+
+    it("imageKey がすでに使われていた(Repository が null)なら SettingImageError にし、その画像は削除しない", async () => {
+        mockValidMoldedProducts();
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection());
+        mockedCreate.mockResolvedValue(null);
+
+        const error = await SettingService.create("user-1", createInput({ imageKey: PNG_KEY })).catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(SettingImageError);
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("保存に失敗したら、どのセッティングからも参照されていないことを確かめて画像を削除し、元のエラーを throw する", async () => {
+        mockValidMoldedProducts();
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection());
+        const dbError = new Error("DB接続エラー");
+        mockedCreate.mockRejectedValue(dbError);
+        mockedExistsByImageKey.mockResolvedValue(false);
+
+        await expect(SettingService.create("user-1", createInput({ imageKey: PNG_KEY }))).rejects.toBe(dbError);
+        expect(mockedExistsByImageKey).toHaveBeenCalledWith(PNG_KEY);
+        expect(storage.delete).toHaveBeenCalledWith(PNG_KEY);
+    });
+
+    it("保存の失敗が imageKey の重複だと判定できなくても(P2002 の判定が外れた場合)、使用中の画像は削除しない", async () => {
+        mockValidMoldedProducts();
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection());
+        // Repository が null に変換できず、P2002 がそのまま throw された状態
+        const uniqueError = new Error("Unique constraint failed on the setting_imageKey_key");
+        mockedCreate.mockRejectedValue(uniqueError);
+        mockedExistsByImageKey.mockResolvedValue(true);
+
+        await expect(SettingService.create("user-1", createInput({ imageKey: PNG_KEY }))).rejects.toBe(uniqueError);
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("保存の失敗後に画像の使用状況を確認できなければ、削除せずログだけ残して元のエラーを throw する", async () => {
+        mockValidMoldedProducts();
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection());
+        const dbError = new Error("DB接続エラー");
+        mockedCreate.mockRejectedValue(dbError);
+        mockedExistsByImageKey.mockRejectedValue(new Error("DB接続エラー(確認時)"));
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+        await expect(SettingService.create("user-1", createInput({ imageKey: PNG_KEY }))).rejects.toBe(dbError);
+        expect(storage.delete).not.toHaveBeenCalled();
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        consoleError.mockRestore();
+    });
+
+    it("保存の失敗後に画像の削除も失敗したら、ログだけ残して元のエラーを throw する", async () => {
+        mockValidMoldedProducts();
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection());
+        const dbError = new Error("DB接続エラー");
+        mockedCreate.mockRejectedValue(dbError);
+        mockedExistsByImageKey.mockResolvedValue(false);
+        storage.delete.mockRejectedValue(new Error("S3 エラー"));
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+        await expect(SettingService.create("user-1", createInput({ imageKey: PNG_KEY }))).rejects.toBe(dbError);
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        consoleError.mockRestore();
+    });
+
+    it("画像なしで保存に失敗しても、削除は呼ばない", async () => {
+        mockValidMoldedProducts();
+        const storage = useFakeStorage();
+        mockedCreate.mockRejectedValue(new Error("DB接続エラー"));
+
+        await expect(SettingService.create("user-1", createInput())).rejects.toThrow("DB接続エラー");
+        expect(mockedExistsByImageKey).not.toHaveBeenCalled();
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+});
+
+describe("SettingService.discardUploadedImage", () => {
+    it("本人の prefix で、どのセッティングにも使われていなければ削除する", async () => {
+        const storage = useFakeStorage();
+        mockedExistsByImageKey.mockResolvedValue(false);
+
+        await SettingService.discardUploadedImage("user-1", PNG_KEY);
+
+        expect(mockedExistsByImageKey).toHaveBeenCalledWith(PNG_KEY);
+        expect(storage.delete).toHaveBeenCalledWith(PNG_KEY);
+    });
+
+    it.each([
+        ["他人の prefix", "settings/user-2/123e4567-e89b-42d3-a456-426614174000.png"],
+        ["形が違う", "settings/user-1/../user-2/x.png"],
+    ])("%s のキーは、DB も S3 も見ずに何もしない", async (_label, imageKey) => {
+        const storage = useFakeStorage();
+
+        await SettingService.discardUploadedImage("user-1", imageKey);
+
+        expect(mockedExistsByImageKey).not.toHaveBeenCalled();
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("いずれかのセッティングで使われている画像は削除しない", async () => {
+        const storage = useFakeStorage();
+        mockedExistsByImageKey.mockResolvedValue(true);
+
+        await SettingService.discardUploadedImage("user-1", PNG_KEY);
+
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("使用状況を確認できなければ、削除せずログだけ残す", async () => {
+        const storage = useFakeStorage();
+        mockedExistsByImageKey.mockRejectedValue(new Error("DB接続エラー"));
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+        await expect(SettingService.discardUploadedImage("user-1", PNG_KEY)).resolves.toBeUndefined();
+        expect(storage.delete).not.toHaveBeenCalled();
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        consoleError.mockRestore();
+    });
+
+    it("削除に失敗しても throw せず、ログだけ残す", async () => {
+        const storage = useFakeStorage();
+        mockedExistsByImageKey.mockResolvedValue(false);
+        storage.delete.mockRejectedValue(new Error("S3 エラー"));
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+        await expect(SettingService.discardUploadedImage("user-1", PNG_KEY)).resolves.toBeUndefined();
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        consoleError.mockRestore();
     });
 });

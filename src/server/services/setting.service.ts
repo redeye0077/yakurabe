@@ -9,13 +9,26 @@ import { BarrelRepository } from "@/server/repositories/barrel.repository";
 import { ShaftRepository } from "@/server/repositories/shaft.repository";
 import { FlightRepository } from "@/server/repositories/flight.repository";
 import { TipRepository } from "@/server/repositories/tip.repository";
-import { SettingEditDto, SettingListItemDto } from "@/server/dto/setting.dto";
-import { SettingNotFoundError, SettingRuleError } from "@/server/errors/setting.error";
+import { SettingEditDto, SettingImageUploadDto, SettingListItemDto } from "@/server/dto/setting.dto";
+import {
+  SettingImageError,
+  SettingNotFoundError,
+  SettingRuleError,
+} from "@/server/errors/setting.error";
 import { calcTotalPrice } from "@/lib/setting-price";
+import {
+  buildSettingImageKey,
+  detectImageType,
+  isOwnSettingImageKey,
+  parseSettingImageKey,
+  SETTING_IMAGE_MAX_BYTES,
+  SETTING_IMAGE_SIZE_MESSAGE,
+  type SettingImageType,
+} from "@/lib/setting-image";
 import { getObjectStorage } from "@/server/storage/get-object-storage";
 
-// 登録フォームから受け取る入力。投稿者はセッションから決め、画像はこのフェーズでは扱わない
-export type CreateSettingServiceInput = Omit<CreateSettingRecordInput, "userId" | "imageKey">;
+// 登録フォームから受け取る入力。投稿者はセッションから決める。imageKey は画面が S3 にアップロードした画像のキー(任意)
+export type CreateSettingServiceInput = Omit<CreateSettingRecordInput, "userId">;
 
 // 編集フォームから受け取る入力。登録と同じ項目を全置換する
 export type UpdateSettingServiceInput = UpdateSettingRecordInput;
@@ -89,6 +102,59 @@ async function assertValidProducts(ids: SettingProductIds): Promise<void> {
   }
 }
 
+/**
+ * 登録で送られてきた画像のキーが、本人がアップロードした正しい画像か確認する。違反していれば SettingImageError を throw する。
+ * 画面から送られるキーは改ざんでき、S3Mock は署名付き POST の条件(サイズ・形式)を検証しないため、
+ * 保存の直前に S3 上の実物を先頭 16 バイトだけ取得して確かめる
+ * ① キーの形が正しく、本人(userId)の prefix である
+ * ② オブジェクトが存在する(403/404 は存在しない扱い)
+ * ③ サイズが 1 バイト以上・5MB 以下
+ * ④ Content-Type と中身(先頭バイト)の形式が、どちらもキーの拡張子の形式と一致する
+ */
+async function assertUploadedImage(userId: string, imageKey: string): Promise<void> {
+  const parsed = parseSettingImageKey(imageKey);
+  if (!parsed || parsed.userId !== userId) {
+    throw new SettingImageError();
+  }
+
+  const inspection = await getObjectStorage().inspect(imageKey);
+  if (!inspection || inspection.size < 1) {
+    throw new SettingImageError();
+  }
+  if (inspection.size > SETTING_IMAGE_MAX_BYTES) {
+    throw new SettingImageError(SETTING_IMAGE_SIZE_MESSAGE);
+  }
+  if (inspection.contentType !== parsed.type || detectImageType(inspection.firstBytes) !== parsed.type) {
+    throw new SettingImageError();
+  }
+}
+
+// 画像の後片付け。失敗しても元の処理の結果は変えず、ログだけ残す(残った画像は MVP では許容)
+async function deleteImageQuietly(imageKey: string): Promise<void> {
+  try {
+    await getObjectStorage().delete(imageKey);
+  } catch (error) {
+    console.error("[setting] 画像の削除に失敗しました", { imageKey, error });
+  }
+}
+
+/**
+ * どのセッティングからも参照されていない画像だけを削除する(後片付け用)。
+ * 使用状況を確認できなければ削除しない。失敗してもエラーにはせずログだけ残す。
+ * P2002 の判定(Repository の制約名の確認)が Prisma / adapter の更新で外れても、使用中の画像を消さないための確認
+ */
+async function deleteUnreferencedImage(imageKey: string): Promise<void> {
+  try {
+    if (await SettingRepository.existsByImageKey(imageKey)) {
+      return;
+    }
+  } catch (error) {
+    console.error("[setting] 画像の使用状況を確認できなかったため削除しません", { imageKey, error });
+    return;
+  }
+  await deleteImageQuietly(imageKey);
+}
+
 export const SettingService = {
   // 一覧・トップの新着用。limit を省略すると全件を返す
   async listLatest(options: { limit?: number } = {}): Promise<SettingListItemDto[]> {
@@ -104,11 +170,58 @@ export const SettingService = {
     return settings.map(toListItemDto);
   },
 
-  // 登録フォームからの新規作成。商品の組み合わせを検証してから保存し、作成したセッティングのidを返す
+  /**
+   * 画像のアップロード先(署名付き POST)を発行する。キーは settings/{userId}/{UUID}.{拡張子}。
+   * サイズ(1〜5MB)・Content-Type・キーは署名の条件で固定し、S3 が検証する
+   */
+  async createImageUpload(userId: string, contentType: SettingImageType): Promise<SettingImageUploadDto> {
+    const key = buildSettingImageKey(userId, contentType);
+    const upload = await getObjectStorage().createPresignedUpload({
+      key,
+      contentType,
+      maxBytes: SETTING_IMAGE_MAX_BYTES,
+    });
+    return { ...upload, key };
+  },
+
+  /**
+   * 登録フォームからの新規作成。商品の組み合わせと画像を検証してから保存し、作成したセッティングのidを返す。
+   * 画像のキーがすでに別のセッティングで使われていれば SettingImageError を throw する(その画像は消さない)。
+   * それ以外の保存の失敗では、アップロードされた画像を(どのセッティングからも参照されていなければ)削除してから
+   * 元のエラーを throw する
+   */
   async create(userId: string, input: CreateSettingServiceInput): Promise<{ id: string }> {
     await assertValidProducts(input);
+    if (input.imageKey !== null) {
+      await assertUploadedImage(userId, input.imageKey);
+    }
 
-    return SettingRepository.create({ ...input, userId, imageKey: null });
+    let created: { id: string } | null;
+    try {
+      created = await SettingRepository.create({ ...input, userId });
+    } catch (error) {
+      if (input.imageKey !== null) {
+        await deleteUnreferencedImage(input.imageKey);
+      }
+      throw error;
+    }
+
+    if (!created) {
+      throw new SettingImageError();
+    }
+    return created;
+  },
+
+  /**
+   * 登録の検証エラーで戻るときに、アップロード済みの画像を削除する(次の送信で画面がアップロードし直す)。
+   * 本人の prefix でないキーと、いずれかのセッティングで使われているキーは削除しない
+   * (改ざんされたキーで、他人や使用中の画像を消させないため)。失敗してもエラーにはせずログだけ残す
+   */
+  async discardUploadedImage(userId: string, imageKey: string): Promise<void> {
+    if (!isOwnSettingImageKey(userId, imageKey)) {
+      return;
+    }
+    await deleteUnreferencedImage(imageKey);
   },
 
   // 編集フォームの初期値。対象が無い場合と他人の投稿の場合は、区別せず SettingNotFoundError を throw する

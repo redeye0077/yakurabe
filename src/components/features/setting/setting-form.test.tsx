@@ -1,14 +1,20 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { SettingForm } from "@/components/features/setting/setting-form";
-import type { SettingFormActionState, SettingFormValues } from "@/types/setting-form";
+import type {
+    SettingFormActionState,
+    SettingFormValues,
+    SettingImageUploadResult,
+} from "@/types/setting-form";
 import type { BarrelListItemDto } from "@/server/dto/barrel.dto";
 import type { ShaftListItemDto } from "@/server/dto/shaft.dto";
 import type { FlightListItemDto } from "@/server/dto/flight.dto";
 import type { TipListItemDto } from "@/server/dto/tip.dto";
 
 const mockedAction = vi.fn<(prevState: SettingFormActionState, formData: FormData) => Promise<SettingFormActionState>>();
+const mockedUploadAction = vi.fn<(input: { contentType: string; size: number }) => Promise<SettingImageUploadResult>>();
 
 const barrels: BarrelListItemDto[] = [
     { id: "barrel-1", name: "テストバレルA", price: 17600, weight: 18 },
@@ -35,6 +41,7 @@ const editValues: SettingFormValues = {
     shaftId: "shaft-2",
     flightId: "flight-2",
     tipId: "tip-2",
+    imageKey: "",
 };
 
 function renderForm() {
@@ -73,6 +80,7 @@ function returnTitleError(_prevState: SettingFormActionState, formData: FormData
             shaftId: str("shaftId"),
             flightId: str("flightId"),
             tipId: str("tipId"),
+            imageKey: "",
         },
     });
 }
@@ -186,7 +194,10 @@ describe("SettingForm", () => {
 
             await waitFor(() => expect(mockedAction).toHaveBeenCalledTimes(1));
             const [, formData] = mockedAction.mock.calls[0];
-            expect(Object.fromEntries(formData)).toEqual(editValues);
+            // 画像の入力欄が無い(imageUploadAction を渡していない)ため、画像は送らない
+            const editFields: Partial<SettingFormValues> = { ...editValues };
+            delete editFields.imageKey;
+            expect(Object.fromEntries(formData)).toEqual(editFields);
         });
 
         it("action がメッセージを返したら、フォームの上部に表示し、入力値を残す", async () => {
@@ -208,5 +219,249 @@ describe("SettingForm", () => {
             expect(screen.getByLabelText<HTMLInputElement>("タイトル").value).toBe("変更後のタイトル");
             expect(screen.getByLabelText<HTMLSelectElement>("シャフト").value).toBe("shaft-2");
         });
+    });
+});
+
+describe("SettingForm の画像", () => {
+    const IMAGE_KEY = "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png";
+    const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 0x49, 0x48, 0x44, 0x52]);
+    const uploadSuccess: SettingImageUploadResult = {
+        status: "success",
+        upload: {
+            url: "http://localhost:9090/yakurabe-dev",
+            fields: { key: IMAGE_KEY, "Content-Type": "image/png", Policy: "policy" },
+            key: IMAGE_KEY,
+        },
+    };
+    const fetchMock = vi.fn<typeof fetch>();
+
+    beforeEach(() => {
+        mockedAction.mockReset();
+        mockedUploadAction.mockReset();
+        fetchMock.mockReset();
+        vi.stubGlobal("fetch", fetchMock);
+        return () => vi.unstubAllGlobals();
+    });
+
+    function renderImageForm() {
+        return render(
+            <SettingForm
+                action={mockedAction}
+                imageUploadAction={mockedUploadAction}
+                barrels={barrels}
+                shafts={shafts}
+                flights={flights}
+                tips={tips}
+            />
+        );
+    }
+
+    async function selectImage(file: File) {
+        const user = userEvent.setup({ applyAccept: false });
+        await user.upload(screen.getByLabelText("画像(任意)"), file);
+        return user;
+    }
+
+    function fillRequired() {
+        fireEvent.change(screen.getByLabelText("タイトル"), { target: { value: "テストセッティング" } });
+        fillAllExceptTitle();
+    }
+
+    // ブラウザの申告(type)は JPEG だが、中身は PNG
+    const pngFile = () => new File([PNG], "photo.jpg", { type: "image/jpeg" });
+
+    it("imageUploadAction を渡さなければ画像の入力欄を表示しない", () => {
+        renderForm();
+        expect(screen.queryByLabelText("画像(任意)")).not.toBeInTheDocument();
+    });
+
+    it("画像を選ぶと、先頭バイトで判定した形式で発行し、S3 に POST してから imageKey 付きで保存の Action を呼ぶ", async () => {
+        mockedUploadAction.mockResolvedValue(uploadSuccess);
+        fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+        mockedAction.mockResolvedValue(null);
+        renderImageForm();
+        fillRequired();
+        const file = pngFile();
+        const user = await selectImage(file);
+
+        await user.click(screen.getByRole("button", { name: "登録する" }));
+
+        await waitFor(() => expect(mockedAction).toHaveBeenCalledTimes(1));
+        expect(mockedUploadAction).toHaveBeenCalledWith({ contentType: "image/png", size: file.size });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const body = fetchMock.mock.calls[0][1]?.body as FormData;
+        expect(body.get("file")).toBe(file);
+
+        const formData = mockedAction.mock.calls[0][1];
+        expect(formData.get("imageKey")).toBe(IMAGE_KEY);
+        // ファイル本体は保存の Action に送らない
+        expect(formData.has("image")).toBe(false);
+    });
+
+    it("画像を選ばなければ、発行も POST もせずに保存の Action を呼ぶ", async () => {
+        mockedAction.mockResolvedValue(null);
+        renderImageForm();
+        fillRequired();
+
+        fireEvent.click(screen.getByRole("button", { name: "登録する" }));
+
+        await waitFor(() => expect(mockedAction).toHaveBeenCalledTimes(1));
+        expect(mockedUploadAction).not.toHaveBeenCalled();
+        expect(fetchMock).not.toHaveBeenCalled();
+        const formData = mockedAction.mock.calls[0][1];
+        expect(formData.has("imageKey")).toBe(false);
+        expect(formData.has("image")).toBe(false);
+    });
+
+    it("画像でないファイルなら、どこにも送らずに形式のエラーを表示する", async () => {
+        renderImageForm();
+        fillRequired();
+        const user = await selectImage(new File(["<!doctype html>"], "x.png", { type: "image/png" }));
+
+        await user.click(screen.getByRole("button", { name: "登録する" }));
+
+        expect(await screen.findByText("JPEG・PNG・WebP の画像を選択してください")).toBeInTheDocument();
+        expect(screen.getByLabelText("画像(任意)")).toHaveAttribute("aria-invalid", "true");
+        expect(mockedUploadAction).not.toHaveBeenCalled();
+        expect(mockedAction).not.toHaveBeenCalled();
+    });
+
+    it("5MB を超えるファイルなら、どこにも送らずにサイズのエラーを表示する", async () => {
+        renderImageForm();
+        fillRequired();
+        const big = new Uint8Array(5 * 1024 * 1024 + 1);
+        big.set(PNG);
+        const user = await selectImage(new File([big], "big.png", { type: "image/png" }));
+
+        await user.click(screen.getByRole("button", { name: "登録する" }));
+
+        expect(await screen.findByText("画像は 5MB 以下にしてください")).toBeInTheDocument();
+        expect(mockedUploadAction).not.toHaveBeenCalled();
+        expect(mockedAction).not.toHaveBeenCalled();
+    });
+
+    it("発行の Action が invalid を返したら、そのメッセージを表示して保存しない", async () => {
+        mockedUploadAction.mockResolvedValue({ status: "invalid", message: "画像は 5MB 以下にしてください" });
+        renderImageForm();
+        fillRequired();
+        const user = await selectImage(pngFile());
+
+        await user.click(screen.getByRole("button", { name: "登録する" }));
+
+        expect(await screen.findByText("画像は 5MB 以下にしてください")).toBeInTheDocument();
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(mockedAction).not.toHaveBeenCalled();
+    });
+
+    it("S3 への POST が失敗したら、アップロード失敗のエラーを表示して保存せず、選択したファイルは残す", async () => {
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        mockedUploadAction.mockResolvedValue(uploadSuccess);
+        fetchMock.mockResolvedValue(new Response("AccessDenied", { status: 403 }));
+        renderImageForm();
+        fillRequired();
+        const user = await selectImage(pngFile());
+
+        await user.click(screen.getByRole("button", { name: "登録する" }));
+
+        expect(
+            await screen.findByText("画像のアップロードに失敗しました。時間をおいて再度お試しください")
+        ).toBeInTheDocument();
+        expect(mockedAction).not.toHaveBeenCalled();
+        expect(screen.getByLabelText<HTMLInputElement>("画像(任意)").files).toHaveLength(1);
+        consoleError.mockRestore();
+    });
+
+    it("発行の Action が例外を投げても、アップロード失敗のエラーを表示する", async () => {
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        mockedUploadAction.mockRejectedValue(new Error("Failed to fetch"));
+        renderImageForm();
+        fillRequired();
+        const user = await selectImage(pngFile());
+
+        await user.click(screen.getByRole("button", { name: "登録する" }));
+
+        expect(
+            await screen.findByText("画像のアップロードに失敗しました。時間をおいて再度お試しください")
+        ).toBeInTheDocument();
+        expect(mockedAction).not.toHaveBeenCalled();
+        consoleError.mockRestore();
+    });
+
+    it("未ログイン(unauthenticated)なら、画像なしで保存の Action を呼ぶ(そちらがログイン画面へ送る)", async () => {
+        mockedUploadAction.mockResolvedValue({ status: "unauthenticated" });
+        mockedAction.mockResolvedValue(null);
+        renderImageForm();
+        fillRequired();
+        const user = await selectImage(pngFile());
+
+        await user.click(screen.getByRole("button", { name: "登録する" }));
+
+        await waitFor(() => expect(mockedAction).toHaveBeenCalledTimes(1));
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(mockedAction.mock.calls[0][1].has("imageKey")).toBe(false);
+    });
+
+    it("アップロード中も送信ボタンを無効にする", async () => {
+        let finishUpload: (result: SettingImageUploadResult) => void = () => {};
+        mockedUploadAction.mockImplementation(
+            () => new Promise((resolve) => {
+                finishUpload = resolve;
+            })
+        );
+        fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+        mockedAction.mockResolvedValue(null);
+        renderImageForm();
+        fillRequired();
+        const user = await selectImage(pngFile());
+
+        await user.click(screen.getByRole("button", { name: "登録する" }));
+
+        expect(await screen.findByRole("button", { name: "登録中..." })).toBeDisabled();
+        finishUpload(uploadSuccess);
+        await waitFor(() => expect(mockedAction).toHaveBeenCalledTimes(1));
+    });
+
+    it("サーバーから画像のエラーが返ったら表示し、次の送信でアップロードし直す", async () => {
+        mockedUploadAction.mockResolvedValue(uploadSuccess);
+        fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+        mockedAction.mockResolvedValueOnce({
+            fieldErrors: { imageKey: "画像を確認できませんでした。もう一度選択してください" },
+            values: { ...editValues, imageKey: "" },
+        });
+        mockedAction.mockResolvedValueOnce(null);
+        renderImageForm();
+        fillRequired();
+        const user = await selectImage(pngFile());
+
+        await user.click(screen.getByRole("button", { name: "登録する" }));
+        expect(await screen.findByText("画像を確認できませんでした。もう一度選択してください")).toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "登録する" }));
+        await waitFor(() => expect(mockedAction).toHaveBeenCalledTimes(2));
+        expect(mockedUploadAction).toHaveBeenCalledTimes(2);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe("SettingForm の送信失敗", () => {
+    beforeEach(() => {
+        mockedAction.mockReset();
+    });
+
+    it("保存の Action が例外を投げたら、error.tsx に飛ばさずフォームの上部にエラーを表示し、入力を残す", async () => {
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        mockedAction.mockRejectedValue(new Error("An error occurred in the Server Components render"));
+        renderForm();
+        fireEvent.change(screen.getByLabelText("タイトル"), { target: { value: "テストセッティング" } });
+        fillAllExceptTitle();
+
+        fireEvent.click(screen.getByRole("button", { name: "登録する" }));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+            "送信に失敗しました。時間をおいて再度お試しください"
+        );
+        expect(screen.getByLabelText<HTMLInputElement>("タイトル").value).toBe("テストセッティング");
+        expect(screen.getByRole("button", { name: "登録する" })).toBeEnabled();
+        consoleError.mockRestore();
     });
 });

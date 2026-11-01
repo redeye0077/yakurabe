@@ -123,6 +123,82 @@ describe("SettingRepository.create", () => {
     });
 });
 
+describe("SettingRepository.create の UNIQUE 制約違反", () => {
+    const data: CreateSettingRecordInput = {
+        userId: "user-1",
+        title: "テストセッティング",
+        description: null,
+        imageKey: "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png",
+        barrelId: "barrel-1",
+        shaftId: "shaft-1",
+        flightId: "flight-1",
+        tipId: "tip-1",
+    };
+
+    function p2002(meta: Record<string, unknown>) {
+        return new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+            code: "P2002",
+            clientVersion: "test",
+            meta,
+        });
+    }
+
+    // mariadb の driver adapter 経由の形(meta.target は無く、制約名が入る)
+    const adapterMeta = (index: string) => ({
+        modelName: "Setting",
+        driverAdapterError: {
+            name: "DriverAdapterError",
+            cause: { kind: "UniqueConstraintViolation", constraint: { index }, table: "setting" },
+        },
+    });
+
+    it("作成したセッティングの id を返す", async () => {
+        mockedCreate.mockResolvedValue({ id: "setting-new" } as unknown as Setting);
+        await expect(SettingRepository.create(data)).resolves.toEqual({ id: "setting-new" });
+    });
+
+    it.each([
+        ["driver adapter の制約名が setting_imageKey_key", adapterMeta("setting_imageKey_key")],
+        ["meta.target が [\"imageKey\"]", { target: ["imageKey"] }],
+        ["meta.target が \"setting_imageKey_key\"", { target: "setting_imageKey_key" }],
+    ])("imageKey の P2002(%s)なら null を返す", async (_label, meta) => {
+        mockedCreate.mockRejectedValue(p2002(meta));
+        await expect(SettingRepository.create(data)).resolves.toBeNull();
+    });
+
+    it.each([
+        ["driver adapter の制約名が別の UNIQUE", adapterMeta("setting_other_key")],
+        ["meta.target が別の項目", { target: ["title"] }],
+        ["meta が空", {}],
+    ])("imageKey 以外の P2002(%s)はそのまま throw する", async (_label, meta) => {
+        const error = p2002(meta);
+        mockedCreate.mockRejectedValue(error);
+        await expect(SettingRepository.create(data)).rejects.toBe(error);
+    });
+
+    it("P2002 以外のエラーはそのまま throw する", async () => {
+        const error = createKnownRequestError("P2003");
+        mockedCreate.mockRejectedValue(error);
+        await expect(SettingRepository.create(data)).rejects.toBe(error);
+    });
+});
+
+describe("SettingRepository.existsByImageKey", () => {
+    const imageKey = "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png";
+
+    it("imageKey で検索し、見つかれば true", async () => {
+        mockedFindUnique.mockResolvedValue({ id: "setting-1" } as unknown as Setting);
+
+        await expect(SettingRepository.existsByImageKey(imageKey)).resolves.toBe(true);
+        expect(mockedFindUnique).toHaveBeenCalledWith({ where: { imageKey }, select: { id: true } });
+    });
+
+    it("見つからなければ false", async () => {
+        mockedFindUnique.mockResolvedValue(null);
+        await expect(SettingRepository.existsByImageKey(imageKey)).resolves.toBe(false);
+    });
+});
+
 describe("SettingRepository.upsert", () => {
     it("idで検索し、無ければidを付けて作成、あれば同じ内容で更新する", async () => {
         const data: UpsertSettingInput = {

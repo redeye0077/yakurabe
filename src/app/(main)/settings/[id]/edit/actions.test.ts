@@ -82,7 +82,8 @@ describe("updateSettingAction", () => {
 
         const url = await redirectedTo(updateSettingAction("setting-1", null, createFormData()));
 
-        expect(mockedUpdate).toHaveBeenCalledWith("user-1", { id: "setting-1", ...formValues });
+        // 編集フォームは画像を送らないため imageKey は null(Controller の updateSettingSchema で捨てる)
+        expect(mockedUpdate).toHaveBeenCalledWith("user-1", { id: "setting-1", ...formValues, imageKey: null });
         expect(mockedRevalidatePath.mock.calls).toEqual([["/mypage"], ["/settings"], ["/"]]);
         expect(url).toBe("/mypage");
     });
@@ -97,7 +98,7 @@ describe("updateSettingAction", () => {
 
         expect(result).toEqual({
             fieldErrors: { title: "タイトルを入力してください" },
-            values: formValues,
+            values: { ...formValues, imageKey: "" },
         });
         expect(mockedRevalidatePath).not.toHaveBeenCalled();
     });
@@ -112,7 +113,7 @@ describe("updateSettingAction", () => {
 
         expect(result).toEqual({
             fieldErrors: {},
-            values: formValues,
+            values: { ...formValues, imageKey: "" },
             message: "セッティングが見つかりません。すでに削除されている可能性があります",
         });
         expect(mockedRevalidatePath.mock.calls).toEqual([["/mypage"], ["/settings"], ["/"]]);

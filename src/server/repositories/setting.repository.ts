@@ -48,6 +48,34 @@ export type SettingEditRecord = Prisma.SettingGetPayload<{ select: typeof settin
 // 編集フォームからの更新用。投稿者・画像・投稿日時は変更しない
 export type UpdateSettingRecordInput = Omit<CreateSettingRecordInput, "userId" | "imageKey">;
 
+// imageKey の UNIQUE 制約名(prisma/migrations の CREATE UNIQUE INDEX)
+const IMAGE_KEY_UNIQUE_INDEX = "setting_imageKey_key";
+
+/**
+ * imageKey の UNIQUE 制約違反(P2002)か。
+ * driver adapter(mariadb)経由では meta.target が付かず、meta.driverAdapterError.cause.constraint に
+ * 制約名(index)が入るため両方を見る。どちらでも imageKey と判定できなければ false
+ */
+function isImageKeyUniqueViolation(e: unknown): boolean {
+  if (!(e instanceof Prisma.PrismaClientKnownRequestError) || e.code !== "P2002") {
+    return false;
+  }
+  const meta: Record<string, unknown> = e.meta ?? {};
+
+  const target = meta.target;
+  if (target === "imageKey" || target === IMAGE_KEY_UNIQUE_INDEX) return true;
+  if (Array.isArray(target) && target.includes("imageKey")) return true;
+
+  const constraint = getProperty(getProperty(meta.driverAdapterError, "cause"), "constraint");
+  if (getProperty(constraint, "index") === IMAGE_KEY_UNIQUE_INDEX) return true;
+  const fields = getProperty(constraint, "fields");
+  return Array.isArray(fields) && fields.includes("imageKey");
+}
+
+function getProperty(value: unknown, key: string): unknown {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>)[key] : undefined;
+}
+
 export const SettingRepository = {
   // 新着順。take を省略すると全件を返す
   async findLatest(take?: number) {
@@ -113,11 +141,29 @@ export const SettingRepository = {
     }
   },
 
-  async create(data: CreateSettingRecordInput) {
-    return prisma.setting.create({
-      data,
+  // 作成したセッティングの id を返す。imageKey がすでに別のセッティングで使われていれば(P2002)null を返す。
+  // imageKey 以外の P2002 はそのまま throw する
+  async create(data: CreateSettingRecordInput): Promise<{ id: string } | null> {
+    try {
+      return await prisma.setting.create({
+        data,
+        select: { id: true },
+      });
+    } catch (e) {
+      if (isImageKeyUniqueViolation(e)) {
+        return null;
+      }
+      throw e;
+    }
+  },
+
+  // 画像の保存先キーを使っているセッティングがあるか(使用中の画像を消さないための確認)
+  async existsByImageKey(imageKey: string): Promise<boolean> {
+    const setting = await prisma.setting.findUnique({
+      where: { imageKey },
       select: { id: true },
     });
+    return setting !== null;
   },
 
   // Seedで固定idを使って登録するため、同じidがあれば更新する

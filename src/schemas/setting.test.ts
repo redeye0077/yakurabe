@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { createSettingSchema } from "@/schemas/setting";
+import {
+    createSettingImageUploadSchema,
+    createSettingSchema,
+    updateSettingSchema,
+} from "@/schemas/setting";
 
 describe("createSettingSchema", () => {
     const validInput = {
@@ -85,5 +89,84 @@ describe("createSettingSchema", () => {
             expect(result.error.issues[0].path).toEqual([field]);
             expect(result.error.issues[0].message).toBe(expectedMessage);
         }
+    });
+});
+
+describe("createSettingSchema の imageKey", () => {
+    const base = {
+        title: "テストセッティング",
+        description: "",
+        barrelId: "barrel-1",
+        shaftId: "shaft-1",
+        flightId: "flight-1",
+        tipId: "tip-1",
+    };
+
+    it.each([
+        ["未送信(null)", null],
+        ["空文字", ""],
+        ["項目なし", undefined],
+    ])("%s なら null にする", (_label, imageKey) => {
+        expect(createSettingSchema.parse({ ...base, imageKey }).imageKey).toBeNull();
+    });
+
+    it("文字列はそのまま受け取る(形と本人のキーかは Service で確認する)", () => {
+        const imageKey = "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png";
+        expect(createSettingSchema.parse({ ...base, imageKey }).imageKey).toBe(imageKey);
+    });
+
+    it.each([
+        ["ファイル", new File([], "a.png")],
+        ["192文字", "a".repeat(192)],
+    ])("%s はエラー", (_label, imageKey) => {
+        const result = createSettingSchema.safeParse({ ...base, imageKey });
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0]).toMatchObject({
+            path: ["imageKey"],
+            message: "画像を確認できませんでした。もう一度選択してください",
+        });
+    });
+});
+
+describe("updateSettingSchema", () => {
+    it("imageKey が送られてきても結果に含めない(編集では画像を変更しない)", () => {
+        const result = updateSettingSchema.parse({
+            title: "テストセッティング",
+            description: "",
+            barrelId: "barrel-1",
+            shaftId: "shaft-1",
+            flightId: "flight-1",
+            tipId: "tip-1",
+            imageKey: "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png",
+        });
+        expect(result).not.toHaveProperty("imageKey");
+    });
+});
+
+describe("createSettingImageUploadSchema", () => {
+    it.each(["image/jpeg", "image/png", "image/webp"])("%s・1バイト〜5MB を受け入れる", (contentType) => {
+        expect(createSettingImageUploadSchema.safeParse({ contentType, size: 1 }).success).toBe(true);
+        expect(createSettingImageUploadSchema.safeParse({ contentType, size: 5 * 1024 * 1024 }).success).toBe(true);
+    });
+
+    it.each(["image/gif", "image/svg+xml", "text/html", "", null])("形式 %s はエラー", (contentType) => {
+        const result = createSettingImageUploadSchema.safeParse({ contentType, size: 100 });
+        expect(result.error?.issues[0]?.message).toBe("JPEG・PNG・WebP の画像を選択してください");
+    });
+
+    it("5MB を超えるとサイズのエラー", () => {
+        const result = createSettingImageUploadSchema.safeParse({
+            contentType: "image/png",
+            size: 5 * 1024 * 1024 + 1,
+        });
+        expect(result.error?.issues[0]?.message).toBe("画像は 5MB 以下にしてください");
+    });
+
+    it.each([
+        ["0バイト", 0],
+        ["小数", 1.5],
+        ["文字列", "100"],
+    ])("サイズが %s ならエラー", (_label, size) => {
+        expect(createSettingImageUploadSchema.safeParse({ contentType: "image/png", size }).success).toBe(false);
     });
 });

@@ -1,3 +1,5 @@
+import { SETTING_IMAGE_UNVERIFIED_MESSAGE } from "@/lib/setting-image";
+
 // セッティングの業務ルール違反で、エラーを表示する入力項目
 export type SettingRuleField = "barrelId" | "shaftId" | "flightId" | "tipId";
 
@@ -18,5 +20,15 @@ export class SettingNotFoundError extends Error {
   constructor(message = "セッティングが見つかりません") {
     super(message);
     this.name = "SettingNotFoundError";
+  }
+}
+
+// 登録時に送られてきた画像が確認できない場合(本人のキーでない・存在しない・形式やサイズが正しくない・すでに使われている)
+export class SettingImageError extends Error {
+  readonly field = "imageKey";
+
+  constructor(message = SETTING_IMAGE_UNVERIFIED_MESSAGE) {
+    super(message);
+    this.name = "SettingImageError";
   }
 }
