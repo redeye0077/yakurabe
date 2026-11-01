@@ -2,7 +2,7 @@
 export type SettingListItemDto = {
   id: string;
   title: string;
-  imageUrl: string | null; // 未設定なら画面側で DartMark を表示する
+  imageUrl: string | null; // 表示用 URL(Service で保存先キーから組み立てる)。未設定なら画面側で DartMark を表示する
   barrelName: string;
   shaftName: string | null; // シャフト一体型フライトの場合は null
   flightName: string;
@@ -17,6 +17,7 @@ export type SettingListItemDto = {
 export type SettingEditDto = {
   title: string;
   description: string | null;
+  imageUrl: string | null; // 表示用 URL。未設定なら null
   barrelId: string;
   shaftId: string | null; // シャフト一体型フライトの場合は null
   flightId: string;

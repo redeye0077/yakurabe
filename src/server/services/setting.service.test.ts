@@ -11,6 +11,8 @@ import { ShaftRepository } from "@/server/repositories/shaft.repository";
 import { FlightRepository } from "@/server/repositories/flight.repository";
 import { TipRepository } from "@/server/repositories/tip.repository";
 import { SettingNotFoundError, SettingRuleError, SettingRuleField } from "@/server/errors/setting.error";
+import { S3ObjectStorage } from "@/server/storage/s3-object-storage";
+import { getObjectStorage } from "@/server/storage/get-object-storage";
 
 vi.mock("@/server/repositories/setting.repository", () => ({
     SettingRepository: {
@@ -23,6 +25,11 @@ vi.mock("@/server/repositories/setting.repository", () => ({
         upsert: vi.fn(),
         delete: vi.fn(),
     },
+}));
+// 表示用 URL の組み立てだけを使うため、通信しない実装をそのまま使う(開発と同じ形の S3_PUBLIC_BASE_URL)
+const PUBLIC_BASE_URL = "http://localhost:9090/yakurabe-dev";
+vi.mock("@/server/storage/get-object-storage", () => ({
+    getObjectStorage: vi.fn(),
 }));
 vi.mock("@/server/repositories/barrel.repository", () => ({
     BarrelRepository: { findById: vi.fn() },
@@ -49,6 +56,21 @@ const mockedFindBarrel = vi.mocked(BarrelRepository.findById);
 const mockedFindShaft = vi.mocked(ShaftRepository.findById);
 const mockedFindFlight = vi.mocked(FlightRepository.findById);
 const mockedFindTip = vi.mocked(TipRepository.findById);
+const mockedGetObjectStorage = vi.mocked(getObjectStorage);
+
+const IMAGE_KEY = "settings/user-1/123e4567-e89b-42d3-a456-426614174000.webp";
+const IMAGE_URL = `${PUBLIC_BASE_URL}/${IMAGE_KEY}`;
+
+function createStorage(publicBaseUrl = PUBLIC_BASE_URL) {
+    return new S3ObjectStorage({
+        region: "ap-northeast-1",
+        bucket: "yakurabe-dev",
+        accessKeyId: "dummy",
+        secretAccessKey: "dummy",
+        publicBaseUrl,
+        endpoint: "http://s3mock:9090",
+    });
+}
 
 // 成型フライト(FIT規格)と、規格が合うシャフトの組み合わせ。業務ルールの正常系の基準にする
 function mockValidMoldedProducts() {
@@ -89,7 +111,7 @@ function createFoundSetting(overrides: Partial<FoundSetting> = {}): FoundSetting
     return {
         id: "setting-1",
         title: "テストセッティング",
-        imageUrl: "/images/samples/test.jpg",
+        imageKey: IMAGE_KEY,
         createdAt: new Date("2026-10-01T00:00:00.000Z"),
         user: { username: "テストユーザー" },
         barrel: { name: "テストバレル", weight: 18, price: 17600 },
@@ -105,6 +127,7 @@ function createEditRecord(overrides: Partial<SettingEditRecord> = {}): SettingEd
         userId: "user-1",
         title: "テストセッティング",
         description: "テスト",
+        imageKey: null,
         barrelId: "barrel-1",
         shaftId: "shaft-1",
         flightId: "flight-1",
@@ -115,6 +138,7 @@ function createEditRecord(overrides: Partial<SettingEditRecord> = {}): SettingEd
 
 beforeEach(() => {
     vi.clearAllMocks();
+    mockedGetObjectStorage.mockReturnValue(createStorage());
 });
 
 describe("SettingService.listLatest", () => {
@@ -128,7 +152,7 @@ describe("SettingService.listLatest", () => {
             {
                 id: "setting-1",
                 title: "テストセッティング",
-                imageUrl: "/images/samples/test.jpg",
+                imageUrl: IMAGE_URL,
                 barrelName: "テストバレル",
                 shaftName: "テストシャフト",
                 flightName: "テストフライト",
@@ -161,12 +185,33 @@ describe("SettingService.listLatest", () => {
         expect(result.totalPrice).toBe(17600 + 1980 + 770);
     });
 
-    it("画像が未設定の場合はimageUrlをnullのまま返す", async () => {
-        mockedFindLatest.mockResolvedValue([createFoundSetting({ imageUrl: null })]);
+    it("画像が未設定(imageKey が null)の場合は imageUrl を null にする", async () => {
+        mockedFindLatest.mockResolvedValue([createFoundSetting({ imageKey: null })]);
 
         const [result] = await SettingService.listLatest();
 
         expect(result.imageUrl).toBeNull();
+    });
+
+    it("表示用 URL は S3_PUBLIC_BASE_URL とキーを1つの / でつなぐ(二重スラッシュにしない)", async () => {
+        mockedFindLatest.mockResolvedValue([createFoundSetting()]);
+
+        const [result] = await SettingService.listLatest();
+
+        expect(result.imageUrl).toBe(
+            "http://localhost:9090/yakurabe-dev/settings/user-1/123e4567-e89b-42d3-a456-426614174000.webp"
+        );
+        // プロトコルの "//" 以外にスラッシュの連続が無い
+        expect(result.imageUrl?.replace("http://", "")).not.toContain("//");
+    });
+
+    it("S3_PUBLIC_BASE_URL の末尾に / が付いていても二重スラッシュにしない", async () => {
+        mockedGetObjectStorage.mockReturnValue(createStorage(`${PUBLIC_BASE_URL}/`));
+        mockedFindLatest.mockResolvedValue([createFoundSetting()]);
+
+        const [result] = await SettingService.listLatest();
+
+        expect(result.imageUrl).toBe(IMAGE_URL);
     });
 });
 
@@ -184,7 +229,7 @@ describe("SettingService.listByUser", () => {
         expect(result[0]).toEqual({
             id: "setting-1",
             title: "テストセッティング",
-            imageUrl: "/images/samples/test.jpg",
+            imageUrl: IMAGE_URL,
             barrelName: "テストバレル",
             shaftName: "テストシャフト",
             flightName: "テストフライト",
@@ -218,7 +263,7 @@ describe("SettingService.create", () => {
 
             const result = await SettingService.create("user-1", input);
 
-            expect(mockedCreate).toHaveBeenCalledWith({ ...input, userId: "user-1", imageUrl: null });
+            expect(mockedCreate).toHaveBeenCalledWith({ ...input, userId: "user-1", imageKey: null });
             expect(result).toEqual({ id: "setting-new" });
         });
 
@@ -230,7 +275,7 @@ describe("SettingService.create", () => {
             await SettingService.create("user-1", input);
 
             expect(mockedFindShaft).not.toHaveBeenCalled();
-            expect(mockedCreate).toHaveBeenCalledWith({ ...input, userId: "user-1", imageUrl: null });
+            expect(mockedCreate).toHaveBeenCalledWith({ ...input, userId: "user-1", imageKey: null });
         });
 
         it("特徴・使用感がnullでも作成する", async () => {
@@ -313,7 +358,7 @@ describe("SettingService.upsert", () => {
         userId: "user-1",
         title: "テストセッティング",
         description: "テスト",
-        imageUrl: null,
+        imageKey: null,
         barrelId: "barrel-1",
         shaftId: "shaft-1",
         flightId: "flight-1",
@@ -381,11 +426,20 @@ describe("SettingService.getForEdit", () => {
         expect(result).toEqual({
             title: "テストセッティング",
             description: null,
+            imageUrl: null,
             barrelId: "barrel-1",
             shaftId: null,
             flightId: "flight-1",
             tipId: "tip-1",
         });
+    });
+
+    it("画像があれば、保存先キーから組み立てた表示用 URL を返す", async () => {
+        mockedFindById.mockResolvedValue(createEditRecord({ imageKey: IMAGE_KEY }));
+
+        const result = await SettingService.getForEdit("user-1", "setting-1");
+
+        expect(result.imageUrl).toBe(IMAGE_URL);
     });
 
     it("対象が存在しなければ SettingNotFoundError を throw する", async () => {

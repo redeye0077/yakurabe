@@ -142,6 +142,7 @@ describe("SettingController.getForEdit", () => {
     const setting = {
         title: "テストセッティング",
         description: null,
+        imageUrl: null,
         barrelId: "barrel-1",
         shaftId: "shaft-1",
         flightId: "flight-1",

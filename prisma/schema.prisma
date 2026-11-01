@@ -112,8 +112,10 @@ model Setting {
   title       String
   // 任意。未入力時は null
   description String?  @db.VarChar(191)
-  // 任意。未設定時は画面側で DartMark を表示する
-  imageUrl    String?
+  // 任意。S3 の保存先キー(settings/{userId}/{UUID}.{拡張子})。未設定時は画面側で DartMark を表示する
+  // 表示用 URL は保存せず、Service で DTO を作るときに S3_PUBLIC_BASE_URL と組み立てる
+  // 同じ画像を複数のセッティングで共有すると、片方の削除で画像が消えるため一意にする
+  imageKey    String?  @unique @db.VarChar(191)
   barrelId    String
   shaftId     String?
   flightId    String

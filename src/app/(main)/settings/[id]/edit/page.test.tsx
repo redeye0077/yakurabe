@@ -107,6 +107,7 @@ describe("EditSettingPage", () => {
             setting: {
                 title: "編集前のセッティング",
                 description: null,
+                imageUrl: null,
                 barrelId: "barrel-1",
                 shaftId: "shaft-1",
                 flightId: "flight-1",

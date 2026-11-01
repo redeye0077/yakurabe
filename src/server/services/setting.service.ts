@@ -12,21 +12,27 @@ import { TipRepository } from "@/server/repositories/tip.repository";
 import { SettingEditDto, SettingListItemDto } from "@/server/dto/setting.dto";
 import { SettingNotFoundError, SettingRuleError } from "@/server/errors/setting.error";
 import { calcTotalPrice } from "@/lib/setting-price";
+import { getObjectStorage } from "@/server/storage/get-object-storage";
 
 // 登録フォームから受け取る入力。投稿者はセッションから決め、画像はこのフェーズでは扱わない
-export type CreateSettingServiceInput = Omit<CreateSettingRecordInput, "userId" | "imageUrl">;
+export type CreateSettingServiceInput = Omit<CreateSettingRecordInput, "userId" | "imageKey">;
 
 // 編集フォームから受け取る入力。登録と同じ項目を全置換する
 export type UpdateSettingServiceInput = UpdateSettingRecordInput;
 
 type SettingProductIds = Pick<CreateSettingRecordInput, "barrelId" | "shaftId" | "flightId" | "tipId">;
 
+// 保存先キーから表示用 URL を組み立てる。DB には URL を保存しない(保存先のドメインが変わっても DB を直さずに済む)
+function toImageUrl(imageKey: string | null): string | null {
+  return imageKey === null ? null : getObjectStorage().publicUrl(imageKey);
+}
+
 // 一覧カード用のDTOに変換する。合計価格は保存していないので、ここで算出する
 function toListItemDto(setting: SettingListItemRecord): SettingListItemDto {
   return {
     id: setting.id,
     title: setting.title,
-    imageUrl: setting.imageUrl,
+    imageUrl: toImageUrl(setting.imageKey),
     barrelName: setting.barrel.name,
     shaftName: setting.shaft?.name ?? null,
     flightName: setting.flight.name,
@@ -102,7 +108,7 @@ export const SettingService = {
   async create(userId: string, input: CreateSettingServiceInput): Promise<{ id: string }> {
     await assertValidProducts(input);
 
-    return SettingRepository.create({ ...input, userId, imageUrl: null });
+    return SettingRepository.create({ ...input, userId, imageKey: null });
   },
 
   // 編集フォームの初期値。対象が無い場合と他人の投稿の場合は、区別せず SettingNotFoundError を throw する
@@ -115,6 +121,7 @@ export const SettingService = {
     return {
       title: setting.title,
       description: setting.description,
+      imageUrl: toImageUrl(setting.imageKey),
       barrelId: setting.barrelId,
       shaftId: setting.shaftId,
       flightId: setting.flightId,

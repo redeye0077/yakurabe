@@ -29,6 +29,8 @@ type S3ObjectStorageOptions = {
   bucket: string;
   accessKeyId: string;
   secretAccessKey: string;
+  /** 表示用 URL の先頭部分(例: http://localhost:9090/yakurabe-dev) */
+  publicBaseUrl: string;
   /** サーバーから操作するときの接続先(開発のみ)。未設定なら S3 の既定の接続先 */
   endpoint?: string;
   /** ブラウザに渡す署名付き URL の接続先(開発のみ)。未設定なら endpoint と同じ */
@@ -44,12 +46,14 @@ export class S3ObjectStorage implements ObjectStorage {
   private readonly client: S3Client;
   private readonly presignClient: S3Client;
   private readonly bucket: string;
+  private readonly publicBaseUrl: string;
 
   constructor({
     region,
     bucket,
     accessKeyId,
     secretAccessKey,
+    publicBaseUrl,
     endpoint,
     publicEndpoint,
   }: S3ObjectStorageOptions) {
@@ -67,6 +71,8 @@ export class S3ObjectStorage implements ObjectStorage {
     const presignEndpoint = publicEndpoint ?? endpoint;
     this.presignClient = presignEndpoint === endpoint ? this.client : createClient(presignEndpoint);
     this.bucket = bucket;
+    // 末尾に / を付けて設定されても、URL が二重スラッシュにならないようにする
+    this.publicBaseUrl = publicBaseUrl.replace(/\/+$/, "");
   }
 
   async createPresignedUpload({
@@ -128,6 +134,11 @@ export class S3ObjectStorage implements ObjectStorage {
 
   async delete(key: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+  }
+
+  publicUrl(key: string): string {
+    // キーは settings/{userId}/{UUID}.{拡張子} の形に限っているため、エンコードは不要
+    return `${this.publicBaseUrl}/${key.replace(/^\/+/, "")}`;
   }
 }
 

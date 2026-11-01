@@ -11,12 +11,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function createStorage(options: { endpoint?: string; publicEndpoint?: string } = {}) {
+function createStorage(
+  options: { endpoint?: string; publicEndpoint?: string; publicBaseUrl?: string } = {}
+) {
   return new S3ObjectStorage({
     region: "ap-northeast-1",
     bucket: "yakurabe-test",
     accessKeyId: "dummy",
     secretAccessKey: "dummy",
+    publicBaseUrl: "http://localhost:9090/yakurabe-test",
     ...options,
   });
 }
@@ -164,6 +167,46 @@ describe("S3ObjectStorage.delete", () => {
     const command = send.mock.calls[0][0];
     expect(command).toBeInstanceOf(DeleteObjectCommand);
     expect(command.input).toEqual({ Bucket: "yakurabe-test", Key: "settings/user-1/abc.jpg" });
+  });
+});
+
+describe("S3ObjectStorage.publicUrl", () => {
+  const key = "settings/user-1/abc.jpg";
+
+  it("S3_PUBLIC_BASE_URL とキーを1つの / でつなぐ(開発: http://localhost:9090/<バケット名>)", () => {
+    expect(createStorage().publicUrl(key)).toBe(
+      "http://localhost:9090/yakurabe-test/settings/user-1/abc.jpg"
+    );
+  });
+
+  it.each([
+    ["末尾に /", "http://localhost:9090/yakurabe-test/"],
+    ["末尾に //", "http://localhost:9090/yakurabe-test//"],
+  ])("S3_PUBLIC_BASE_URL の%sが付いていても二重スラッシュにしない", (_, publicBaseUrl) => {
+    expect(createStorage({ publicBaseUrl }).publicUrl(key)).toBe(
+      "http://localhost:9090/yakurabe-test/settings/user-1/abc.jpg"
+    );
+  });
+
+  it("キーの先頭に / があっても二重スラッシュにしない", () => {
+    expect(createStorage().publicUrl(`/${key}`)).toBe(
+      "http://localhost:9090/yakurabe-test/settings/user-1/abc.jpg"
+    );
+  });
+
+  it("本番の形(バケット名入りのホスト)でもつなぎ方は同じ", () => {
+    const storage = createStorage({
+      publicBaseUrl: "https://yakurabe-images-prod.s3.ap-northeast-1.amazonaws.com",
+    });
+    expect(storage.publicUrl(key)).toBe(
+      "https://yakurabe-images-prod.s3.ap-northeast-1.amazonaws.com/settings/user-1/abc.jpg"
+    );
+  });
+
+  it("通信しない", () => {
+    const send = vi.spyOn(S3Client.prototype, "send");
+    createStorage().publicUrl(key);
+    expect(send).not.toHaveBeenCalled();
   });
 });
 

@@ -5,7 +5,7 @@ export type UpsertSettingInput = {
   userId: string;
   title: string;
   description: string | null;
-  imageUrl: string | null;
+  imageKey: string | null; // S3 の保存先キー。表示用 URL は Service で組み立てる
   barrelId: string;
   shaftId: string | null;
   flightId: string;
@@ -20,7 +20,7 @@ export type CreateSettingRecordInput = Omit<UpsertSettingInput, "createdAt">;
 const settingListItemSelect = {
   id: true,
   title: true,
-  imageUrl: true,
+  imageKey: true,
   createdAt: true,
   user: { select: { username: true } },
   barrel: { select: { name: true, weight: true, price: true } },
@@ -36,6 +36,7 @@ const settingEditSelect = {
   userId: true,
   title: true,
   description: true,
+  imageKey: true,
   barrelId: true,
   shaftId: true,
   flightId: true,
@@ -45,7 +46,7 @@ const settingEditSelect = {
 export type SettingEditRecord = Prisma.SettingGetPayload<{ select: typeof settingEditSelect }>;
 
 // 編集フォームからの更新用。投稿者・画像・投稿日時は変更しない
-export type UpdateSettingRecordInput = Omit<CreateSettingRecordInput, "userId" | "imageUrl">;
+export type UpdateSettingRecordInput = Omit<CreateSettingRecordInput, "userId" | "imageKey">;
 
 export const SettingRepository = {
   // 新着順。take を省略すると全件を返す

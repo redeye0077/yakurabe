@@ -45,4 +45,7 @@ export interface ObjectStorage {
 
   /** オブジェクトを削除する。存在しなくてもエラーにはならない */
   delete(key: string): Promise<void>;
+
+  /** 画面に表示するための公開 URL を返す(通信はしない) */
+  publicUrl(key: string): string;
 }

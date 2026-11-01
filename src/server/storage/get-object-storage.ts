@@ -20,6 +20,7 @@ export function getObjectStorage(): ObjectStorage {
     bucket: config.S3_BUCKET,
     accessKeyId: config.S3_ACCESS_KEY_ID,
     secretAccessKey: config.S3_SECRET_ACCESS_KEY,
+    publicBaseUrl: config.S3_PUBLIC_BASE_URL,
     endpoint: config.S3_ENDPOINT,
     publicEndpoint: config.S3_PUBLIC_ENDPOINT,
   });
