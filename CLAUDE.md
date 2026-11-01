@@ -128,6 +128,12 @@ src/
       setting.repository.ts
       user.repository.ts
     dto/                        # Service/Controller間でやり取りする型定義
+    storage/                    # 画像の保存先(本番: S3 / 開発: S3Mock)。mail/ と同じ構成で、
+                                 # Service から getObjectStorage() 経由で使う(Controller から直接呼ばない)
+      object-storage.ts         # 保存先の抽象(署名付き POST の発行・先頭バイトの確認・削除)
+      s3-object-storage.ts      # S3 での実装
+      storage-config.ts         # 環境変数(S3_*)の検証
+      get-object-storage.ts     # 環境変数から実装を選んで返す(シングルトン)
   components/
     ui/                         # shadcn生成コンポーネント(基本編集しない)
     common/                     # 汎用コンポーネント(Header, Footer, Pagination等)
