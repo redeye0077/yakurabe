@@ -4,7 +4,6 @@ import {
   createSettingSchema,
   deleteSettingSchema,
   settingIdSchema,
-  updateSettingSchema,
   type CreateSettingField,
 } from "@/schemas/setting";
 import { SettingService } from "@/server/services/setting.service";
@@ -159,23 +158,37 @@ export const SettingController = {
   /**
    * 編集フォームの入力を検証して、ログイン中のユーザーのセッティングを更新する。
    * id の形式の誤り(zod)と、対象が無い・本人の投稿でない(SettingNotFoundError)は not_found、
-   * 入力形式の誤り(zod)と業務ルール違反(SettingRuleError)は項目ごとのエラーに変換して返す。
+   * 入力形式の誤り(zod)・業務ルール違反(SettingRuleError)・画像の確認の失敗(SettingImageError)は項目ごとのエラーに変換して返す。
+   * どの場合も、新しくアップロードされた画像は削除する(登録と同じ)。
    * 想定外のエラー(DB障害など)はそのままthrowする。
    */
   async update(
     userId: string,
-    input: { id: unknown } & Record<Exclude<CreateSettingField, "imageKey">, unknown>
+    input: { id: unknown } & Record<CreateSettingField, unknown>
   ): Promise<UpdateSettingResult> {
     const { id, ...fields } = input;
+    const discardImage = async () => {
+      if (typeof fields.imageKey === "string" && fields.imageKey !== "") {
+        await SettingService.discardUploadedImage(userId, fields.imageKey);
+      }
+    };
+    const notFound = async (): Promise<UpdateSettingResult> => {
+      await discardImage();
+      return { status: "not_found", message: NOT_FOUND_MESSAGE };
+    };
+    const invalid = async (fieldErrors: CreateSettingFieldErrors): Promise<UpdateSettingResult> => {
+      await discardImage();
+      return { status: "invalid", fieldErrors };
+    };
+
     const parsedId = settingIdSchema.safeParse(id);
     if (!parsedId.success) {
-      return { status: "not_found", message: NOT_FOUND_MESSAGE };
+      return notFound();
     }
 
-    // 編集では画像を変更しないため、imageKey が送られてきても updateSettingSchema で捨てる
-    const parsed = updateSettingSchema.safeParse(fields);
+    const parsed = createSettingSchema.safeParse(fields);
     if (!parsed.success) {
-      return { status: "invalid", fieldErrors: toFieldErrors(parsed.error) };
+      return invalid(toFieldErrors(parsed.error));
     }
 
     try {
@@ -183,10 +196,10 @@ export const SettingController = {
       return { status: "success" };
     } catch (e) {
       if (e instanceof SettingNotFoundError) {
-        return { status: "not_found", message: NOT_FOUND_MESSAGE };
+        return notFound();
       }
-      if (e instanceof SettingRuleError) {
-        return { status: "invalid", fieldErrors: { [e.field]: e.message } };
+      if (e instanceof SettingRuleError || e instanceof SettingImageError) {
+        return invalid({ [e.field]: e.message });
       }
       throw e;
     }

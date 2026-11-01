@@ -310,7 +310,7 @@ describe("SettingRepository.update", () => {
         tipId: "tip-2",
     };
 
-    it("idと投稿者の両方で絞り込んで更新し、idだけを取得して返す", async () => {
+    it("idと投稿者の両方で絞り込んで更新し、updated を返す", async () => {
         // 実際の戻り値は select で指定した id だけ。モックの型は select を反映しないため Setting として渡す
         mockedUpdate.mockResolvedValue({ id: "setting-1" } as Setting);
 
@@ -321,18 +321,62 @@ describe("SettingRepository.update", () => {
             data,
             select: { id: true },
         });
-        expect(result).toEqual({ id: "setting-1" });
+        expect(result).toBe("updated");
     });
 
-    it("該当するセッティングが無い(P2025)場合は null を返す", async () => {
+    it("imageKey を渡さなければ、Prisma にも imageKey を渡さない(既存の画像を null で上書きしない)", async () => {
+        mockedUpdate.mockResolvedValue({ id: "setting-1" } as Setting);
+
+        await SettingRepository.update("setting-1", "user-1", data);
+
+        expect(mockedUpdate.mock.calls[0][0].data).not.toHaveProperty("imageKey");
+    });
+
+    it("imageKey を渡したときだけ、その値で差し替える", async () => {
+        mockedUpdate.mockResolvedValue({ id: "setting-1" } as Setting);
+        const imageKey = "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png";
+
+        await SettingRepository.update("setting-1", "user-1", { ...data, imageKey });
+
+        expect(mockedUpdate.mock.calls[0][0].data).toEqual({ ...data, imageKey });
+    });
+
+    it("該当するセッティングが無い(P2025)場合は not_found を返す", async () => {
         mockedUpdate.mockRejectedValue(createKnownRequestError("P2025"));
 
         const result = await SettingRepository.update("setting-1", "user-1", data);
 
-        expect(result).toBeNull();
+        expect(result).toBe("not_found");
     });
 
-    it("P2025 以外のエラーはそのまま throw する", async () => {
+    it("imageKey の UNIQUE 制約違反(P2002)なら image_key_taken を返す", async () => {
+        mockedUpdate.mockRejectedValue(
+            new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+                code: "P2002",
+                clientVersion: "test",
+                meta: {
+                    driverAdapterError: {
+                        cause: { kind: "UniqueConstraintViolation", constraint: { index: "setting_imageKey_key" } },
+                    },
+                },
+            })
+        );
+
+        await expect(SettingRepository.update("setting-1", "user-1", data)).resolves.toBe("image_key_taken");
+    });
+
+    it("imageKey 以外の P2002 はそのまま throw する", async () => {
+        const error = new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+            code: "P2002",
+            clientVersion: "test",
+            meta: { target: ["title"] },
+        });
+        mockedUpdate.mockRejectedValue(error);
+
+        await expect(SettingRepository.update("setting-1", "user-1", data)).rejects.toBe(error);
+    });
+
+    it("P2025・P2002 以外のエラーはそのまま throw する", async () => {
         const dbError = createKnownRequestError("P2003");
         mockedUpdate.mockRejectedValue(dbError);
 

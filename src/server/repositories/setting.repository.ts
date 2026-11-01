@@ -45,8 +45,14 @@ const settingEditSelect = {
 
 export type SettingEditRecord = Prisma.SettingGetPayload<{ select: typeof settingEditSelect }>;
 
-// 編集フォームからの更新用。投稿者・画像・投稿日時は変更しない
-export type UpdateSettingRecordInput = Omit<CreateSettingRecordInput, "userId" | "imageKey">;
+// 編集フォームからの更新用。投稿者・投稿日時は変更しない。
+// imageKey は新しい画像に差し替えるときだけ渡す(渡さなければ既存の画像をそのまま残す。null で外す操作は無い)
+export type UpdateSettingRecordInput = Omit<CreateSettingRecordInput, "userId" | "imageKey"> & {
+  imageKey?: string;
+};
+
+// 更新の結果。not_found は該当なし(P2025)、image_key_taken は imageKey が別のセッティングで使われている(P2002)
+export type UpdateSettingRecordResult = "updated" | "not_found" | "image_key_taken";
 
 // imageKey の UNIQUE 制約名(prisma/migrations の CREATE UNIQUE INDEX)
 const IMAGE_KEY_UNIQUE_INDEX = "setting_imageKey_key";
@@ -125,17 +131,22 @@ export const SettingRepository = {
     }
   },
 
-  // 指定したユーザーの投稿なら更新し、idを返す。該当が無ければ(P2025)null を返す
-  async update(id: string, userId: string, data: UpdateSettingRecordInput): Promise<{ id: string } | null> {
+  // 指定したユーザーの投稿なら更新する。該当が無ければ(P2025)not_found、
+  // imageKey がすでに別のセッティングで使われていれば(P2002)image_key_taken を返す。それ以外のエラーは throw する
+  async update(id: string, userId: string, data: UpdateSettingRecordInput): Promise<UpdateSettingRecordResult> {
     try {
-      return await prisma.setting.update({
+      await prisma.setting.update({
         where: { id, userId },
         data,
         select: { id: true },
       });
+      return "updated";
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
-        return null;
+        return "not_found";
+      }
+      if (isImageKeyUniqueViolation(e)) {
+        return "image_key_taken";
       }
       throw e;
     }

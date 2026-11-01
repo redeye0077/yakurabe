@@ -468,13 +468,21 @@ describe("SettingService.update", () => {
     it("自分の投稿で業務ルールを満たせば、idと投稿者を指定して入力どおりに更新する", async () => {
         mockedFindById.mockResolvedValue(createEditRecord());
         mockValidMoldedProducts();
-        mockedUpdate.mockResolvedValue({ id: "setting-1" });
+        mockedUpdate.mockResolvedValue("updated");
         const input = createInput({ title: "更新後のセッティング", description: null });
 
         await SettingService.update("user-1", "setting-1", input);
 
         expect(mockedFindById).toHaveBeenCalledWith("setting-1");
-        expect(mockedUpdate).toHaveBeenCalledWith("setting-1", "user-1", input);
+        // 画像を選んでいない(imageKey が null)ので imageKey は渡さない
+        expect(mockedUpdate).toHaveBeenCalledWith("setting-1", "user-1", {
+            title: "更新後のセッティング",
+            description: null,
+            barrelId: "barrel-1",
+            shaftId: "shaft-1",
+            flightId: "flight-1",
+            tipId: "tip-1",
+        });
     });
 
     it("対象が存在しなければ SettingNotFoundError を throw し、業務ルールの確認も更新もしない", async () => {
@@ -506,10 +514,10 @@ describe("SettingService.update", () => {
         expect(mockedUpdate).not.toHaveBeenCalled();
     });
 
-    it("確認後に別の操作で削除されていた(Repository が null を返した)場合は SettingNotFoundError を throw する", async () => {
+    it("確認後に別の操作で削除されていた(Repository が not_found を返した)場合は SettingNotFoundError を throw する", async () => {
         mockedFindById.mockResolvedValue(createEditRecord());
         mockValidMoldedProducts();
-        mockedUpdate.mockResolvedValue(null);
+        mockedUpdate.mockResolvedValue("not_found");
 
         await expect(SettingService.update("user-1", "setting-1", createInput())).rejects.toBeInstanceOf(
             SettingNotFoundError,
@@ -774,5 +782,163 @@ describe("SettingService.discardUploadedImage", () => {
         await expect(SettingService.discardUploadedImage("user-1", PNG_KEY)).resolves.toBeUndefined();
         expect(consoleError).toHaveBeenCalledTimes(1);
         consoleError.mockRestore();
+    });
+});
+
+describe("SettingService.update の画像", () => {
+    const OLD_KEY = "settings/user-1/00000000-0000-4000-8000-000000000000.jpg";
+
+    beforeEach(() => {
+        mockValidMoldedProducts();
+        mockedFindById.mockResolvedValue(createEditRecord({ imageKey: OLD_KEY }));
+        mockedUpdate.mockResolvedValue("updated");
+        mockedExistsByImageKey.mockResolvedValue(false);
+    });
+
+    it("画像を選ばずに編集したら、imageKey を渡さず既存の画像を残す(確認も削除もしない)", async () => {
+        const storage = useFakeStorage();
+
+        await SettingService.update("user-1", "setting-1", createInput({ imageKey: null }));
+
+        expect(mockedUpdate.mock.calls[0][2]).not.toHaveProperty("imageKey");
+        expect(storage.inspect).not.toHaveBeenCalled();
+        expect(mockedExistsByImageKey).not.toHaveBeenCalled();
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("新しい画像を選んだら、確認してから imageKey を差し替え、成功後に古い画像を削除する", async () => {
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection());
+
+        await SettingService.update("user-1", "setting-1", createInput({ imageKey: PNG_KEY }));
+
+        expect(storage.inspect).toHaveBeenCalledWith(PNG_KEY);
+        expect(mockedUpdate.mock.calls[0][2]).toMatchObject({ imageKey: PNG_KEY });
+        expect(mockedExistsByImageKey).toHaveBeenCalledWith(OLD_KEY);
+        expect(storage.delete).toHaveBeenCalledTimes(1);
+        expect(storage.delete).toHaveBeenCalledWith(OLD_KEY);
+        // 更新が終わってから古い画像を消す
+        expect(mockedUpdate.mock.invocationCallOrder[0]).toBeLessThan(storage.delete.mock.invocationCallOrder[0]);
+    });
+
+    it("元の画像が無ければ、差し替えても削除はしない", async () => {
+        mockedFindById.mockResolvedValue(createEditRecord({ imageKey: null }));
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection());
+
+        await SettingService.update("user-1", "setting-1", createInput({ imageKey: PNG_KEY }));
+
+        expect(mockedUpdate.mock.calls[0][2]).toMatchObject({ imageKey: PNG_KEY });
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("現在の画像と同じキーが送られてきたら、差し替えとして扱わない(確認・更新・削除しない)", async () => {
+        const storage = useFakeStorage();
+
+        await SettingService.update("user-1", "setting-1", createInput({ imageKey: OLD_KEY }));
+
+        expect(storage.inspect).not.toHaveBeenCalled();
+        expect(mockedUpdate.mock.calls[0][2]).not.toHaveProperty("imageKey");
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("古い画像がほかのセッティングから参照されていれば削除しない", async () => {
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection());
+        mockedExistsByImageKey.mockResolvedValue(true);
+
+        await SettingService.update("user-1", "setting-1", createInput({ imageKey: PNG_KEY }));
+
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("古い画像の削除に失敗しても、ログだけ残して更新は成功扱いにする", async () => {
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection());
+        storage.delete.mockRejectedValue(new Error("S3 エラー"));
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+        await expect(
+            SettingService.update("user-1", "setting-1", createInput({ imageKey: PNG_KEY }))
+        ).resolves.toBeUndefined();
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        consoleError.mockRestore();
+    });
+
+    it("新しい画像の確認に失敗したら SettingImageError を throw し、更新も削除もしない", async () => {
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(null);
+
+        const error = await SettingService.update("user-1", "setting-1", createInput({ imageKey: PNG_KEY })).catch(
+            (e: unknown) => e
+        );
+
+        expect(error).toBeInstanceOf(SettingImageError);
+        expect(mockedUpdate).not.toHaveBeenCalled();
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("他人の prefix のキーなら SettingImageError(S3 は見ない)", async () => {
+        const storage = useFakeStorage();
+
+        const error = await SettingService.update(
+            "user-1",
+            "setting-1",
+            createInput({ imageKey: "settings/user-2/123e4567-e89b-42d3-a456-426614174000.png" })
+        ).catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(SettingImageError);
+        expect(storage.inspect).not.toHaveBeenCalled();
+        expect(mockedUpdate).not.toHaveBeenCalled();
+    });
+
+    it("imageKey がすでに使われていた(image_key_taken)なら SettingImageError にし、新しい画像も古い画像も削除しない", async () => {
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection());
+        mockedUpdate.mockResolvedValue("image_key_taken");
+
+        const error = await SettingService.update("user-1", "setting-1", createInput({ imageKey: PNG_KEY })).catch(
+            (e: unknown) => e
+        );
+
+        expect(error).toBeInstanceOf(SettingImageError);
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("更新時に対象が消えていた(not_found)なら SettingNotFoundError にし、古い画像は削除しない", async () => {
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection());
+        mockedUpdate.mockResolvedValue("not_found");
+
+        await expect(
+            SettingService.update("user-1", "setting-1", createInput({ imageKey: PNG_KEY }))
+        ).rejects.toBeInstanceOf(SettingNotFoundError);
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("更新に失敗したら、新しい画像を(参照されていなければ)削除して元のエラーを throw し、古い画像は残す", async () => {
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection());
+        const dbError = new Error("DB接続エラー");
+        mockedUpdate.mockRejectedValue(dbError);
+
+        await expect(
+            SettingService.update("user-1", "setting-1", createInput({ imageKey: PNG_KEY }))
+        ).rejects.toBe(dbError);
+        expect(mockedExistsByImageKey).toHaveBeenCalledWith(PNG_KEY);
+        expect(storage.delete).toHaveBeenCalledTimes(1);
+        expect(storage.delete).toHaveBeenCalledWith(PNG_KEY);
+    });
+
+    it("更新に失敗しても、新しい画像が参照されていれば(P2002 の判定が外れた場合など)削除しない", async () => {
+        const storage = useFakeStorage();
+        storage.inspect.mockResolvedValue(inspection());
+        mockedUpdate.mockRejectedValue(new Error("Unique constraint failed on the setting_imageKey_key"));
+        mockedExistsByImageKey.mockResolvedValue(true);
+
+        await expect(
+            SettingService.update("user-1", "setting-1", createInput({ imageKey: PNG_KEY }))
+        ).rejects.toThrow("Unique constraint failed");
+        expect(storage.delete).not.toHaveBeenCalled();
     });
 });

@@ -69,9 +69,6 @@ export type CreateSettingInput = z.infer<typeof createSettingSchema>;
 // エラーを表示する入力項目
 export type CreateSettingField = keyof CreateSettingInput;
 
-// セッティング編集フォーム。画像の変更は扱わないため imageKey は受け取らない(送られてきても捨てる)
-export const updateSettingSchema = createSettingSchema.omit({ imageKey: true });
-
 // 画像のアップロード先(署名付き POST)の発行。形式は画面が先頭バイトで判定したものを受け取る
 export const createSettingImageUploadSchema = z.object({
   contentType: z.enum(SETTING_IMAGE_TYPES, { error: SETTING_IMAGE_TYPE_MESSAGE }),

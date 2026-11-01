@@ -304,17 +304,89 @@ describe("SettingController.update", () => {
             shaftId: null,
             flightId: "flight-1",
             tipId: "tip-1",
+            imageKey: null,
         });
     });
 
-    it("imageKey が送られてきても Service には渡さない(編集では画像を変更しない)", async () => {
+    it("新しい画像のキーを検証して Service に渡し、成功したら画像は削除しない", async () => {
         mockedUpdate.mockResolvedValue();
 
-        // 編集の Action も readSettingFormData で imageKey を読むため、余分な項目として届く場合を再現する
-        const input = { id: "setting-1", ...validInput, imageKey: IMAGE_KEY };
-        await SettingController.update("user-1", input);
+        const result = await SettingController.update("user-1", { id: "setting-1", ...validInput, imageKey: IMAGE_KEY });
 
-        expect(mockedUpdate.mock.calls[0][2]).not.toHaveProperty("imageKey");
+        expect(result).toEqual({ status: "success" });
+        expect(mockedUpdate.mock.calls[0][2]).toMatchObject({ imageKey: IMAGE_KEY });
+        expect(mockedDiscardUploadedImage).not.toHaveBeenCalled();
+    });
+
+    it("画像を選んでいなければ imageKey は null で Service に渡す(Service が既存の画像を残す)", async () => {
+        mockedUpdate.mockResolvedValue();
+
+        await SettingController.update("user-1", { id: "setting-1", ...validInput });
+
+        expect(mockedUpdate.mock.calls[0][2]).toMatchObject({ imageKey: null });
+    });
+
+    describe("新しい画像があるときにエラーで戻る場合は、アップロード済みの画像を削除する", () => {
+        const withImage = { id: "setting-1", ...validInput, imageKey: IMAGE_KEY };
+
+        it("id が不正", async () => {
+            const result = await SettingController.update("user-1", { ...withImage, id: "" });
+
+            expect(result.status).toBe("not_found");
+            expect(mockedDiscardUploadedImage).toHaveBeenCalledWith("user-1", IMAGE_KEY);
+        });
+
+        it("入力が不正(zod)", async () => {
+            const result = await SettingController.update("user-1", { ...withImage, title: "" });
+
+            expect(result.status).toBe("invalid");
+            expect(mockedUpdate).not.toHaveBeenCalled();
+            expect(mockedDiscardUploadedImage).toHaveBeenCalledWith("user-1", IMAGE_KEY);
+        });
+
+        it("業務ルール違反", async () => {
+            mockedUpdate.mockRejectedValue(new SettingRuleError("shaftId", "シャフトを選択してください"));
+
+            const result = await SettingController.update("user-1", withImage);
+
+            expect(result).toEqual({ status: "invalid", fieldErrors: { shaftId: "シャフトを選択してください" } });
+            expect(mockedDiscardUploadedImage).toHaveBeenCalledWith("user-1", IMAGE_KEY);
+        });
+
+        it("画像の確認の失敗(SettingImageError)は imageKey のエラーにする", async () => {
+            mockedUpdate.mockRejectedValue(new SettingImageError());
+
+            const result = await SettingController.update("user-1", withImage);
+
+            expect(result).toEqual({
+                status: "invalid",
+                fieldErrors: { imageKey: "画像を確認できませんでした。もう一度選択してください" },
+            });
+            expect(mockedDiscardUploadedImage).toHaveBeenCalledWith("user-1", IMAGE_KEY);
+        });
+
+        it("対象が無い・本人の投稿でない(SettingNotFoundError)", async () => {
+            mockedUpdate.mockRejectedValue(new SettingNotFoundError());
+
+            const result = await SettingController.update("user-1", withImage);
+
+            expect(result.status).toBe("not_found");
+            expect(mockedDiscardUploadedImage).toHaveBeenCalledWith("user-1", IMAGE_KEY);
+        });
+
+        it("想定外のエラーでは削除を呼ばずにそのまま throw する(後片付けは Service が行う)", async () => {
+            const dbError = new Error("connection lost");
+            mockedUpdate.mockRejectedValue(dbError);
+
+            await expect(SettingController.update("user-1", withImage)).rejects.toBe(dbError);
+            expect(mockedDiscardUploadedImage).not.toHaveBeenCalled();
+        });
+    });
+
+    it("画像を選んでいなければ、エラーでも削除しない", async () => {
+        const result = await SettingController.update("user-1", { id: "setting-1", ...validInput, title: "" });
+
+        expect(result.status).toBe("invalid");
         expect(mockedDiscardUploadedImage).not.toHaveBeenCalled();
     });
 

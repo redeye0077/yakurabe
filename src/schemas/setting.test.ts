@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
     createSettingImageUploadSchema,
     createSettingSchema,
-    updateSettingSchema,
 } from "@/schemas/setting";
 
 describe("createSettingSchema", () => {
@@ -125,21 +124,6 @@ describe("createSettingSchema の imageKey", () => {
             path: ["imageKey"],
             message: "画像を確認できませんでした。もう一度選択してください",
         });
-    });
-});
-
-describe("updateSettingSchema", () => {
-    it("imageKey が送られてきても結果に含めない(編集では画像を変更しない)", () => {
-        const result = updateSettingSchema.parse({
-            title: "テストセッティング",
-            description: "",
-            barrelId: "barrel-1",
-            shaftId: "shaft-1",
-            flightId: "flight-1",
-            tipId: "tip-1",
-            imageKey: "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png",
-        });
-        expect(result).not.toHaveProperty("imageKey");
     });
 });
 

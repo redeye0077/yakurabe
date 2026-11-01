@@ -1,6 +1,7 @@
 "use client";
 
 import { startTransition, useActionState, useMemo, useRef, useState, type FormEvent } from "react";
+import Image from "next/image";
 import { unstable_rethrow } from "next/navigation";
 import type { CreateSettingField } from "@/schemas/setting";
 import type {
@@ -24,8 +25,10 @@ import { cn } from "@/lib/utils";
 type SettingFormProps = {
   // 登録では createSettingAction、編集では id を bind した updateSettingAction を渡す
   action: SettingFormAction;
-  // 画像のアップロード先を発行する Action。渡すと画像の入力欄を表示する(登録のみ。編集は画像を変更しない)
+  // 画像のアップロード先を発行する Action。渡すと画像の入力欄を表示する(登録・編集で共通)
   imageUploadAction?: SettingImageUploadAction;
+  // 編集時の現在の画像の URL(未設定なら null)。渡すと入力欄の上に現在の画像を表示する。登録では省略する
+  currentImageUrl?: string | null;
   // 編集時の初期値。省略すると空のフォーム(登録)になる
   defaultValues?: SettingFormValues;
   submitLabel?: string;
@@ -48,6 +51,7 @@ const errorId = (field: CreateSettingField) => `setting-${field}-error`;
 export function SettingForm({
   action,
   imageUploadAction,
+  currentImageUrl,
   defaultValues,
   submitLabel = "登録する",
   pendingLabel = "登録中...",
@@ -300,6 +304,24 @@ export function SettingForm({
           <Label htmlFor={fieldId("imageKey")} className={labelClass}>
             画像(任意)
           </Label>
+          {/* 編集では現在の画像を表示する。画像を外す操作は無く、新しい画像を選んだときだけ差し替える */}
+          {currentImageUrl !== undefined && (
+            <div data-testid="current-image">
+              {currentImageUrl ? (
+                <div className="relative h-[140px] w-[200px] overflow-hidden rounded-[10px] border border-brand-border">
+                  <Image
+                    src={currentImageUrl}
+                    alt="現在の画像"
+                    fill
+                    sizes="200px"
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <p className="text-[13px] text-brand-muted">画像は未設定です</p>
+              )}
+            </div>
+          )}
           {/* 選択したファイルは送信時にアップロードする。エラーで戻っても選択は残り、次の送信でアップロードし直す */}
           <input
             ref={imageInputRef}
@@ -310,7 +332,11 @@ export function SettingForm({
             className="text-[14px] text-brand-ink file:mr-3 file:rounded-[8px] file:border file:border-brand-border file:bg-white file:px-3 file:py-1.5 file:text-[13px]"
             {...errorProps("imageKey")}
           />
-          <p className="text-[12px] text-brand-muted">JPEG・PNG・WebP、5MB まで</p>
+          <p className="text-[12px] text-brand-muted">
+            {currentImageUrl !== undefined
+              ? "新しい画像を選ぶと差し替えます(JPEG・PNG・WebP、5MB まで)"
+              : "JPEG・PNG・WebP、5MB まで"}
+          </p>
           {fieldError("imageKey")}
         </div>
       )}

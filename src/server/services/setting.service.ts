@@ -3,6 +3,7 @@ import {
   SettingListItemRecord,
   SettingRepository,
   UpdateSettingRecordInput,
+  UpdateSettingRecordResult,
   UpsertSettingInput,
 } from "@/server/repositories/setting.repository";
 import { BarrelRepository } from "@/server/repositories/barrel.repository";
@@ -30,8 +31,9 @@ import { getObjectStorage } from "@/server/storage/get-object-storage";
 // 登録フォームから受け取る入力。投稿者はセッションから決める。imageKey は画面が S3 にアップロードした画像のキー(任意)
 export type CreateSettingServiceInput = Omit<CreateSettingRecordInput, "userId">;
 
-// 編集フォームから受け取る入力。登録と同じ項目を全置換する
-export type UpdateSettingServiceInput = UpdateSettingRecordInput;
+// 編集フォームから受け取る入力。登録と同じ項目を全置換する。
+// imageKey は新しい画像を選んだときだけ入る(null なら既存の画像をそのまま残す)
+export type UpdateSettingServiceInput = Omit<CreateSettingRecordInput, "userId">;
 
 type SettingProductIds = Pick<CreateSettingRecordInput, "barrelId" | "shaftId" | "flightId" | "tipId">;
 
@@ -242,7 +244,13 @@ export const SettingService = {
     };
   },
 
-  // 自分の投稿の更新。投稿者を確認してから、登録と同じ業務ルールで検証して保存する
+  /**
+   * 自分の投稿の更新。投稿者を確認してから、登録と同じ業務ルールと画像の確認をして保存する。
+   * 新しい画像(imageKey)があるときだけ差し替え、成功したら古い画像を(どこからも参照されていなければ)削除する。
+   * 古い画像の削除に失敗してもログだけ残し、更新は成功扱いにする。
+   * imageKey がすでに別のセッティングで使われていれば SettingImageError を throw する(その画像は消さない)。
+   * それ以外の保存の失敗では、新しい画像を(どこからも参照されていなければ)削除してから元のエラーを throw する
+   */
   async update(userId: string, id: string, input: UpdateSettingServiceInput): Promise<void> {
     const setting = await SettingRepository.findById(id);
     if (!setting || setting.userId !== userId) {
@@ -251,10 +259,37 @@ export const SettingService = {
 
     await assertValidProducts(input);
 
-    // 確認してから更新するまでの間に、別の操作で削除された場合
-    const updated = await SettingRepository.update(id, userId, input);
-    if (!updated) {
+    const { imageKey: newImageKey, ...fields } = input;
+    // 現在の画像と同じキーが送られてきた場合(改ざんなど)は差し替えとして扱わない
+    const replacingImageKey = newImageKey !== null && newImageKey !== setting.imageKey ? newImageKey : null;
+    if (replacingImageKey !== null) {
+      await assertUploadedImage(userId, replacingImageKey);
+    }
+
+    // 新しい画像を選んでいなければ imageKey を渡さず、既存の画像を null で上書きしない
+    const data: UpdateSettingRecordInput =
+      replacingImageKey === null ? fields : { ...fields, imageKey: replacingImageKey };
+
+    let result: UpdateSettingRecordResult;
+    try {
+      result = await SettingRepository.update(id, userId, data);
+    } catch (error) {
+      if (replacingImageKey !== null) {
+        await deleteUnreferencedImage(replacingImageKey);
+      }
+      throw error;
+    }
+
+    // 確認してから更新するまでの間に、別の操作で削除された場合(新しい画像の後片付けは Controller で行う)
+    if (result === "not_found") {
       throw new SettingNotFoundError();
+    }
+    if (result === "image_key_taken") {
+      throw new SettingImageError();
+    }
+
+    if (replacingImageKey !== null && setting.imageKey !== null) {
+      await deleteUnreferencedImage(setting.imageKey);
     }
   },
 
