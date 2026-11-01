@@ -293,7 +293,12 @@ export const SettingService = {
     }
   },
 
-  // 自分の投稿の削除。対象が無い場合と他人の投稿の場合は、区別せず SettingNotFoundError を throw する
+  /**
+   * 自分の投稿の削除。対象が無い場合と他人の投稿の場合は、区別せず SettingNotFoundError を throw する。
+   * 投稿者を確認してから削除し、削除した行の画像を(どこからも参照されていなければ)削除する。
+   * 画像は削除した行から取るため、確認と削除の間に画像が差し替えられていても最新の画像を消せる。
+   * 画像の削除に失敗してもログだけ残し、操作は成功扱いにする。DB の削除に失敗したら画像には触れない
+   */
   async delete(userId: string, id: string): Promise<void> {
     const setting = await SettingRepository.findOwnerById(id);
     if (!setting || setting.userId !== userId) {
@@ -304,6 +309,10 @@ export const SettingService = {
     const deleted = await SettingRepository.delete(id, userId);
     if (!deleted) {
       throw new SettingNotFoundError();
+    }
+
+    if (deleted.imageKey !== null) {
+      await deleteUnreferencedImage(deleted.imageKey);
     }
   },
 

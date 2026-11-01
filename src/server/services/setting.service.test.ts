@@ -394,13 +394,79 @@ describe("SettingService.upsert", () => {
 
 describe("SettingService.delete", () => {
     it("自分の投稿なら、idと投稿者を指定して削除する", async () => {
+        const storage = useFakeStorage();
         mockedFindOwnerById.mockResolvedValue({ userId: "user-1" });
-        mockedDelete.mockResolvedValue(true);
+        mockedDelete.mockResolvedValue({ imageKey: null });
 
         await SettingService.delete("user-1", "setting-1");
 
         expect(mockedFindOwnerById).toHaveBeenCalledWith("setting-1");
         expect(mockedDelete).toHaveBeenCalledWith("setting-1", "user-1");
+        // 画像なしのセッティングでは、画像の確認も削除もしない
+        expect(mockedExistsByImageKey).not.toHaveBeenCalled();
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("削除した行に画像があれば、どこからも参照されていないことを確かめて画像も削除する", async () => {
+        const storage = useFakeStorage();
+        mockedFindOwnerById.mockResolvedValue({ userId: "user-1" });
+        mockedDelete.mockResolvedValue({ imageKey: PNG_KEY });
+        mockedExistsByImageKey.mockResolvedValue(false);
+
+        await SettingService.delete("user-1", "setting-1");
+
+        expect(mockedExistsByImageKey).toHaveBeenCalledWith(PNG_KEY);
+        expect(storage.delete).toHaveBeenCalledWith(PNG_KEY);
+        // DB の削除が終わってから画像を消す
+        expect(mockedDelete.mock.invocationCallOrder[0]).toBeLessThan(storage.delete.mock.invocationCallOrder[0]);
+    });
+
+    it("画像がほかのセッティングから参照されていれば、画像は削除しない", async () => {
+        const storage = useFakeStorage();
+        mockedFindOwnerById.mockResolvedValue({ userId: "user-1" });
+        mockedDelete.mockResolvedValue({ imageKey: PNG_KEY });
+        mockedExistsByImageKey.mockResolvedValue(true);
+
+        await SettingService.delete("user-1", "setting-1");
+
+        expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("画像の削除に失敗しても、ログだけ残して成功扱いにする", async () => {
+        const storage = useFakeStorage();
+        mockedFindOwnerById.mockResolvedValue({ userId: "user-1" });
+        mockedDelete.mockResolvedValue({ imageKey: PNG_KEY });
+        mockedExistsByImageKey.mockResolvedValue(false);
+        storage.delete.mockRejectedValue(new Error("S3 エラー"));
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+        await expect(SettingService.delete("user-1", "setting-1")).resolves.toBeUndefined();
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        consoleError.mockRestore();
+    });
+
+    it("画像の使用状況を確認できなくても、削除せずログだけ残して成功扱いにする", async () => {
+        const storage = useFakeStorage();
+        mockedFindOwnerById.mockResolvedValue({ userId: "user-1" });
+        mockedDelete.mockResolvedValue({ imageKey: PNG_KEY });
+        mockedExistsByImageKey.mockRejectedValue(new Error("DB接続エラー"));
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+        await expect(SettingService.delete("user-1", "setting-1")).resolves.toBeUndefined();
+        expect(storage.delete).not.toHaveBeenCalled();
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        consoleError.mockRestore();
+    });
+
+    it("DB の削除が例外で失敗したら、画像には触れずにそのまま throw する", async () => {
+        const storage = useFakeStorage();
+        mockedFindOwnerById.mockResolvedValue({ userId: "user-1" });
+        const dbError = new Error("DB接続エラー");
+        mockedDelete.mockRejectedValue(dbError);
+
+        await expect(SettingService.delete("user-1", "setting-1")).rejects.toBe(dbError);
+        expect(mockedExistsByImageKey).not.toHaveBeenCalled();
+        expect(storage.delete).not.toHaveBeenCalled();
     });
 
     it("対象が存在しなければ SettingNotFoundError を throw し、削除しない", async () => {
@@ -417,11 +483,14 @@ describe("SettingService.delete", () => {
         expect(mockedDelete).not.toHaveBeenCalled();
     });
 
-    it("確認後に別の操作で削除されていた(Repository が false を返した)場合も SettingNotFoundError を throw する", async () => {
+    it("確認後に別の操作で削除されていた(Repository が null を返した)場合も SettingNotFoundError を throw し、画像には触れない", async () => {
+        const storage = useFakeStorage();
         mockedFindOwnerById.mockResolvedValue({ userId: "user-1" });
-        mockedDelete.mockResolvedValue(false);
+        mockedDelete.mockResolvedValue(null);
 
         await expect(SettingService.delete("user-1", "setting-1")).rejects.toBeInstanceOf(SettingNotFoundError);
+        expect(mockedExistsByImageKey).not.toHaveBeenCalled();
+        expect(storage.delete).not.toHaveBeenCalled();
     });
 });
 

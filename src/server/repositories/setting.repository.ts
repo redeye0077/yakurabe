@@ -118,14 +118,17 @@ export const SettingRepository = {
     });
   },
 
-  // 指定したユーザーの投稿なら物理削除する。該当が無ければ(P2025)false を返す
-  async delete(id: string, userId: string): Promise<boolean> {
+  // 指定したユーザーの投稿なら物理削除し、削除した行の imageKey を返す(画像の後片付け用)。
+  // 該当が無ければ(P2025)null を返す
+  async delete(id: string, userId: string): Promise<{ imageKey: string | null } | null> {
     try {
-      await prisma.setting.delete({ where: { id, userId } });
-      return true;
+      return await prisma.setting.delete({
+        where: { id, userId },
+        select: { imageKey: true },
+      });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
-        return false;
+        return null;
       }
       throw e;
     }

@@ -237,19 +237,32 @@ describe("SettingRepository.findOwnerById", () => {
 });
 
 describe("SettingRepository.delete", () => {
-    it("idと投稿者の両方で絞り込んで削除し、true を返す", async () => {
+    it("idと投稿者の両方で絞り込んで削除し、削除した行の imageKey を返す", async () => {
+        const imageKey = "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png";
+        // 実際の戻り値は select で指定した imageKey だけ。モックの型は select を反映しないため Setting として渡す
+        mockedDelete.mockResolvedValue({ imageKey } as Setting);
+
         const result = await SettingRepository.delete("setting-1", "user-1");
 
-        expect(mockedDelete).toHaveBeenCalledWith({ where: { id: "setting-1", userId: "user-1" } });
-        expect(result).toBe(true);
+        expect(mockedDelete).toHaveBeenCalledWith({
+            where: { id: "setting-1", userId: "user-1" },
+            select: { imageKey: true },
+        });
+        expect(result).toEqual({ imageKey });
     });
 
-    it("該当するセッティングが無い(P2025)場合は false を返す", async () => {
+    it("画像なしのセッティングなら imageKey は null", async () => {
+        mockedDelete.mockResolvedValue({ imageKey: null } as Setting);
+
+        await expect(SettingRepository.delete("setting-1", "user-1")).resolves.toEqual({ imageKey: null });
+    });
+
+    it("該当するセッティングが無い(P2025)場合は null を返す", async () => {
         mockedDelete.mockRejectedValue(createKnownRequestError("P2025"));
 
         const result = await SettingRepository.delete("setting-1", "user-1");
 
-        expect(result).toBe(false);
+        expect(result).toBeNull();
     });
 
     it("P2025 以外のエラーはそのまま throw する", async () => {
