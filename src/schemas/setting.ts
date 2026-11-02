@@ -1,5 +1,12 @@
 import { z } from "zod";
 import { CONTROL_CHAR_REGEX } from "@/schemas/auth";
+import {
+  SETTING_IMAGE_MAX_BYTES,
+  SETTING_IMAGE_SIZE_MESSAGE,
+  SETTING_IMAGE_TYPE_MESSAGE,
+  SETTING_IMAGE_TYPES,
+  SETTING_IMAGE_UNVERIFIED_MESSAGE,
+} from "@/lib/setting-image";
 
 // CONTROL_CHAR_REGEX から改行(\n, \r)とタブ(\t)を除いたもの。複数行の入力欄で使う
 const MULTILINE_CONTROL_CHAR_REGEX =
@@ -45,12 +52,34 @@ export const createSettingSchema = z.object({
     (value) => (value === "" || value === null ? null : value),
     z.string({ error: "シャフトの形式が正しくありません" }).nullable()
   ),
+
+  // 任意。画面が S3 にアップロードした画像の保存先キー。未選択(空文字・未送信)は null にする。
+  // 本人のキーか・画像が実在して形式が正しいかは Service 側で確認する
+  imageKey: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? null : value),
+    z
+      .string({ error: SETTING_IMAGE_UNVERIFIED_MESSAGE })
+      .max(191, SETTING_IMAGE_UNVERIFIED_MESSAGE)
+      .nullable()
+  ),
 });
 
 export type CreateSettingInput = z.infer<typeof createSettingSchema>;
 
 // エラーを表示する入力項目
 export type CreateSettingField = keyof CreateSettingInput;
+
+// 画像のアップロード先(署名付き POST)の発行。形式は画面が先頭バイトで判定したものを受け取る
+export const createSettingImageUploadSchema = z.object({
+  contentType: z.enum(SETTING_IMAGE_TYPES, { error: SETTING_IMAGE_TYPE_MESSAGE }),
+  size: z
+    .number({ error: SETTING_IMAGE_TYPE_MESSAGE })
+    .int(SETTING_IMAGE_TYPE_MESSAGE)
+    .min(1, SETTING_IMAGE_TYPE_MESSAGE)
+    .max(SETTING_IMAGE_MAX_BYTES, SETTING_IMAGE_SIZE_MESSAGE),
+});
+
+export type CreateSettingImageUploadInput = z.infer<typeof createSettingImageUploadSchema>;
 
 // セッティングの削除。id の形式(cuid)までは見ず、存在と投稿者の確認は Service 側で行う
 export const deleteSettingSchema = z.object({

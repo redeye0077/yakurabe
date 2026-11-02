@@ -9,6 +9,7 @@ import type { SettingFormActionState } from "@/types/setting-form";
 
 /**
  * セッティング編集フォームから呼ばれるServer Action(useActionState 用)。編集ページで id を bind して渡す。
+ * 新しい画像を選んでいれば、画面が S3 にアップロードした後のキー(imageKey)が FormData に入っている。
  * 入力エラー・業務ルール違反は項目ごとのエラーと入力値を、対象が見つからない場合はメッセージと入力値を返す。
  * 成功したらマイページへリダイレクトする。redirect()は例外で遷移を実現するため、try/catchの中では呼ばない。
  */

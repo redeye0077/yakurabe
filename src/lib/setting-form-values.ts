@@ -4,7 +4,8 @@ import type { SettingFormValues } from "@/types/setting-form";
 
 type SettingFormInput = Record<CreateSettingField, FormDataEntryValue | null>;
 
-// 登録・編集フォームの FormData から、検証前の6項目を取り出す
+// 登録・編集フォームの FormData から、検証前の項目を取り出す。
+// imageKey は画面が S3 にアップロードした後に入れる(画像を選んでいなければ未送信で null)
 export function readSettingFormData(formData: FormData): SettingFormInput {
   return {
     title: formData.get("title"),
@@ -13,6 +14,7 @@ export function readSettingFormData(formData: FormData): SettingFormInput {
     shaftId: formData.get("shaftId"),
     flightId: formData.get("flightId"),
     tipId: formData.get("tipId"),
+    imageKey: formData.get("imageKey"),
   };
 }
 
@@ -26,6 +28,9 @@ export function toFormValuesFromInput(input: SettingFormInput): SettingFormValue
     shaftId: str(input.shaftId),
     flightId: str(input.flightId),
     tipId: str(input.tipId),
+    // エラーで戻ったときのアップロード済み画像は Controller で削除しているため戻さない。
+    // 画面は次の送信で、選択中のファイルをアップロードし直す
+    imageKey: "",
   };
 }
 
@@ -38,5 +43,6 @@ export function toSettingFormValues(setting: SettingEditDto): SettingFormValues 
     shaftId: setting.shaftId ?? "",
     flightId: setting.flightId,
     tipId: setting.tipId,
+    imageKey: "",
   };
 }

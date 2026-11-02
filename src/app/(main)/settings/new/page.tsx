@@ -5,6 +5,7 @@ import { FlightService } from "@/server/services/flight.service";
 import { TipService } from "@/server/services/tip.service";
 import { SettingForm } from "@/components/features/setting/setting-form";
 import { createSettingAction } from "@/app/(main)/settings/new/actions";
+import { createSettingImageUploadAction } from "@/app/(main)/settings/actions";
 
 export default async function NewSettingPage() {
   // 商品マスタの最新を毎回表示する。ビルド時に事前生成させない
@@ -29,6 +30,7 @@ export default async function NewSettingPage() {
         <div className="mt-6">
           <SettingForm
             action={createSettingAction}
+            imageUploadAction={createSettingImageUploadAction}
             barrels={barrels}
             shafts={shafts}
             flights={flights}
