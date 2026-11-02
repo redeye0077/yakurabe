@@ -41,6 +41,10 @@ vi.mock("@/app/(main)/settings/[id]/edit/actions", () => ({
     updateSettingAction: vi.fn(),
 }));
 
+vi.mock("@/app/(main)/settings/actions", () => ({
+    createSettingImageUploadAction: vi.fn(),
+}));
+
 vi.mock("@/server/controllers/setting.controller", () => ({
     SettingController: { getForEdit: vi.fn() },
 }));
@@ -107,6 +111,7 @@ describe("EditSettingPage", () => {
             setting: {
                 title: "編集前のセッティング",
                 description: null,
+                imageUrl: null,
                 barrelId: "barrel-1",
                 shaftId: "shaft-1",
                 flightId: "flight-1",
@@ -121,5 +126,47 @@ describe("EditSettingPage", () => {
         expect(screen.getByLabelText<HTMLSelectElement>("シャフト").value).toBe("shaft-1");
         expect(screen.getByLabelText<HTMLTextAreaElement>("特徴・使用感(任意)").value).toBe("");
         expect(screen.getByRole("button", { name: "更新する" })).toBeInTheDocument();
+    });
+
+    it("画像があれば現在の画像を表示し、その下に差し替え用の入力欄を出す", async () => {
+        mockedGetForEdit.mockResolvedValue({
+            status: "success",
+            setting: {
+                title: "編集前のセッティング",
+                description: null,
+                imageUrl: "http://localhost:9090/yakurabe-dev/settings/user-1/123e4567-e89b-42d3-a456-426614174000.png",
+                barrelId: "barrel-1",
+                shaftId: "shaft-1",
+                flightId: "flight-1",
+                tipId: "tip-1",
+            },
+        });
+
+        render(await renderPage("setting-1"));
+
+        expect(screen.getByRole("img", { name: "現在の画像" })).toBeInTheDocument();
+        expect(screen.getByLabelText("画像(任意)")).toHaveAttribute("type", "file");
+        expect(screen.getByText("新しい画像を選ぶと差し替えます(JPEG・PNG・WebP、5MB まで)")).toBeInTheDocument();
+    });
+
+    it("画像が無ければ「画像は未設定です」と表示し、入力欄は出す", async () => {
+        mockedGetForEdit.mockResolvedValue({
+            status: "success",
+            setting: {
+                title: "編集前のセッティング",
+                description: null,
+                imageUrl: null,
+                barrelId: "barrel-1",
+                shaftId: "shaft-1",
+                flightId: "flight-1",
+                tipId: "tip-1",
+            },
+        });
+
+        render(await renderPage("setting-1"));
+
+        expect(screen.getByText("画像は未設定です")).toBeInTheDocument();
+        expect(screen.queryByRole("img", { name: "現在の画像" })).not.toBeInTheDocument();
+        expect(screen.getByLabelText("画像(任意)")).toBeInTheDocument();
     });
 });

@@ -77,12 +77,27 @@ describe("updateSettingAction", () => {
         expect(mockedUpdate).not.toHaveBeenCalled();
     });
 
+    it("新しい画像を選んでいれば、FormData の imageKey も Controller に渡す", async () => {
+        mockedUpdate.mockResolvedValue({ status: "success" });
+        const formData = createFormData();
+        formData.set("imageKey", "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png");
+
+        await redirectedTo(updateSettingAction("setting-1", null, formData));
+
+        expect(mockedUpdate).toHaveBeenCalledWith("user-1", {
+            id: "setting-1",
+            ...formValues,
+            imageKey: "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png",
+        });
+    });
+
     it("bind された id と FormData の入力で Controller を呼び、成功したら再検証してマイページへリダイレクトする", async () => {
         mockedUpdate.mockResolvedValue({ status: "success" });
 
         const url = await redirectedTo(updateSettingAction("setting-1", null, createFormData()));
 
-        expect(mockedUpdate).toHaveBeenCalledWith("user-1", { id: "setting-1", ...formValues });
+        // 新しい画像を選んでいない(FormData に imageKey が無い)ので null。既存の画像は Service が残す
+        expect(mockedUpdate).toHaveBeenCalledWith("user-1", { id: "setting-1", ...formValues, imageKey: null });
         expect(mockedRevalidatePath.mock.calls).toEqual([["/mypage"], ["/settings"], ["/"]]);
         expect(url).toBe("/mypage");
     });
@@ -97,7 +112,7 @@ describe("updateSettingAction", () => {
 
         expect(result).toEqual({
             fieldErrors: { title: "タイトルを入力してください" },
-            values: formValues,
+            values: { ...formValues, imageKey: "" },
         });
         expect(mockedRevalidatePath).not.toHaveBeenCalled();
     });
@@ -112,7 +127,7 @@ describe("updateSettingAction", () => {
 
         expect(result).toEqual({
             fieldErrors: {},
-            values: formValues,
+            values: { ...formValues, imageKey: "" },
             message: "セッティングが見つかりません。すでに削除されている可能性があります",
         });
         expect(mockedRevalidatePath.mock.calls).toEqual([["/mypage"], ["/settings"], ["/"]]);

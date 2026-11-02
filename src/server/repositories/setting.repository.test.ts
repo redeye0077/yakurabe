@@ -42,7 +42,7 @@ describe("SettingRepository.findLatest", () => {
         select: {
             id: true,
             title: true,
-            imageUrl: true,
+            imageKey: true,
             createdAt: true,
             user: { select: { username: true } },
             barrel: { select: { name: true, weight: true, price: true } },
@@ -81,7 +81,7 @@ describe("SettingRepository.findByUserId", () => {
             select: {
                 id: true,
                 title: true,
-                imageUrl: true,
+                imageKey: true,
                 createdAt: true,
                 user: { select: { username: true } },
                 barrel: { select: { name: true, weight: true, price: true } },
@@ -107,7 +107,7 @@ describe("SettingRepository.create", () => {
             userId: "user-1",
             title: "テストセッティング",
             description: null,
-            imageUrl: null,
+            imageKey: null,
             barrelId: "barrel-1",
             shaftId: "shaft-1",
             flightId: "flight-1",
@@ -123,13 +123,89 @@ describe("SettingRepository.create", () => {
     });
 });
 
+describe("SettingRepository.create の UNIQUE 制約違反", () => {
+    const data: CreateSettingRecordInput = {
+        userId: "user-1",
+        title: "テストセッティング",
+        description: null,
+        imageKey: "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png",
+        barrelId: "barrel-1",
+        shaftId: "shaft-1",
+        flightId: "flight-1",
+        tipId: "tip-1",
+    };
+
+    function p2002(meta: Record<string, unknown>) {
+        return new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+            code: "P2002",
+            clientVersion: "test",
+            meta,
+        });
+    }
+
+    // mariadb の driver adapter 経由の形(meta.target は無く、制約名が入る)
+    const adapterMeta = (index: string) => ({
+        modelName: "Setting",
+        driverAdapterError: {
+            name: "DriverAdapterError",
+            cause: { kind: "UniqueConstraintViolation", constraint: { index }, table: "setting" },
+        },
+    });
+
+    it("作成したセッティングの id を返す", async () => {
+        mockedCreate.mockResolvedValue({ id: "setting-new" } as unknown as Setting);
+        await expect(SettingRepository.create(data)).resolves.toEqual({ id: "setting-new" });
+    });
+
+    it.each([
+        ["driver adapter の制約名が setting_imageKey_key", adapterMeta("setting_imageKey_key")],
+        ["meta.target が [\"imageKey\"]", { target: ["imageKey"] }],
+        ["meta.target が \"setting_imageKey_key\"", { target: "setting_imageKey_key" }],
+    ])("imageKey の P2002(%s)なら null を返す", async (_label, meta) => {
+        mockedCreate.mockRejectedValue(p2002(meta));
+        await expect(SettingRepository.create(data)).resolves.toBeNull();
+    });
+
+    it.each([
+        ["driver adapter の制約名が別の UNIQUE", adapterMeta("setting_other_key")],
+        ["meta.target が別の項目", { target: ["title"] }],
+        ["meta が空", {}],
+    ])("imageKey 以外の P2002(%s)はそのまま throw する", async (_label, meta) => {
+        const error = p2002(meta);
+        mockedCreate.mockRejectedValue(error);
+        await expect(SettingRepository.create(data)).rejects.toBe(error);
+    });
+
+    it("P2002 以外のエラーはそのまま throw する", async () => {
+        const error = createKnownRequestError("P2003");
+        mockedCreate.mockRejectedValue(error);
+        await expect(SettingRepository.create(data)).rejects.toBe(error);
+    });
+});
+
+describe("SettingRepository.existsByImageKey", () => {
+    const imageKey = "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png";
+
+    it("imageKey で検索し、見つかれば true", async () => {
+        mockedFindUnique.mockResolvedValue({ id: "setting-1" } as unknown as Setting);
+
+        await expect(SettingRepository.existsByImageKey(imageKey)).resolves.toBe(true);
+        expect(mockedFindUnique).toHaveBeenCalledWith({ where: { imageKey }, select: { id: true } });
+    });
+
+    it("見つからなければ false", async () => {
+        mockedFindUnique.mockResolvedValue(null);
+        await expect(SettingRepository.existsByImageKey(imageKey)).resolves.toBe(false);
+    });
+});
+
 describe("SettingRepository.upsert", () => {
     it("idで検索し、無ければidを付けて作成、あれば同じ内容で更新する", async () => {
         const data: UpsertSettingInput = {
             userId: "user-1",
             title: "テストセッティング",
             description: "テスト",
-            imageUrl: null,
+            imageKey: null,
             barrelId: "barrel-1",
             shaftId: null,
             flightId: "flight-1",
@@ -161,19 +237,32 @@ describe("SettingRepository.findOwnerById", () => {
 });
 
 describe("SettingRepository.delete", () => {
-    it("idと投稿者の両方で絞り込んで削除し、true を返す", async () => {
+    it("idと投稿者の両方で絞り込んで削除し、削除した行の imageKey を返す", async () => {
+        const imageKey = "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png";
+        // 実際の戻り値は select で指定した imageKey だけ。モックの型は select を反映しないため Setting として渡す
+        mockedDelete.mockResolvedValue({ imageKey } as Setting);
+
         const result = await SettingRepository.delete("setting-1", "user-1");
 
-        expect(mockedDelete).toHaveBeenCalledWith({ where: { id: "setting-1", userId: "user-1" } });
-        expect(result).toBe(true);
+        expect(mockedDelete).toHaveBeenCalledWith({
+            where: { id: "setting-1", userId: "user-1" },
+            select: { imageKey: true },
+        });
+        expect(result).toEqual({ imageKey });
     });
 
-    it("該当するセッティングが無い(P2025)場合は false を返す", async () => {
+    it("画像なしのセッティングなら imageKey は null", async () => {
+        mockedDelete.mockResolvedValue({ imageKey: null } as Setting);
+
+        await expect(SettingRepository.delete("setting-1", "user-1")).resolves.toEqual({ imageKey: null });
+    });
+
+    it("該当するセッティングが無い(P2025)場合は null を返す", async () => {
         mockedDelete.mockRejectedValue(createKnownRequestError("P2025"));
 
         const result = await SettingRepository.delete("setting-1", "user-1");
 
-        expect(result).toBe(false);
+        expect(result).toBeNull();
     });
 
     it("P2025 以外のエラーはそのまま throw する", async () => {
@@ -196,6 +285,7 @@ describe("SettingRepository.findById", () => {
                 userId: true,
                 title: true,
                 description: true,
+                imageKey: true,
                 barrelId: true,
                 shaftId: true,
                 flightId: true,
@@ -233,7 +323,7 @@ describe("SettingRepository.update", () => {
         tipId: "tip-2",
     };
 
-    it("idと投稿者の両方で絞り込んで更新し、idだけを取得して返す", async () => {
+    it("idと投稿者の両方で絞り込んで更新し、updated を返す", async () => {
         // 実際の戻り値は select で指定した id だけ。モックの型は select を反映しないため Setting として渡す
         mockedUpdate.mockResolvedValue({ id: "setting-1" } as Setting);
 
@@ -244,18 +334,62 @@ describe("SettingRepository.update", () => {
             data,
             select: { id: true },
         });
-        expect(result).toEqual({ id: "setting-1" });
+        expect(result).toBe("updated");
     });
 
-    it("該当するセッティングが無い(P2025)場合は null を返す", async () => {
+    it("imageKey を渡さなければ、Prisma にも imageKey を渡さない(既存の画像を null で上書きしない)", async () => {
+        mockedUpdate.mockResolvedValue({ id: "setting-1" } as Setting);
+
+        await SettingRepository.update("setting-1", "user-1", data);
+
+        expect(mockedUpdate.mock.calls[0][0].data).not.toHaveProperty("imageKey");
+    });
+
+    it("imageKey を渡したときだけ、その値で差し替える", async () => {
+        mockedUpdate.mockResolvedValue({ id: "setting-1" } as Setting);
+        const imageKey = "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png";
+
+        await SettingRepository.update("setting-1", "user-1", { ...data, imageKey });
+
+        expect(mockedUpdate.mock.calls[0][0].data).toEqual({ ...data, imageKey });
+    });
+
+    it("該当するセッティングが無い(P2025)場合は not_found を返す", async () => {
         mockedUpdate.mockRejectedValue(createKnownRequestError("P2025"));
 
         const result = await SettingRepository.update("setting-1", "user-1", data);
 
-        expect(result).toBeNull();
+        expect(result).toBe("not_found");
     });
 
-    it("P2025 以外のエラーはそのまま throw する", async () => {
+    it("imageKey の UNIQUE 制約違反(P2002)なら image_key_taken を返す", async () => {
+        mockedUpdate.mockRejectedValue(
+            new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+                code: "P2002",
+                clientVersion: "test",
+                meta: {
+                    driverAdapterError: {
+                        cause: { kind: "UniqueConstraintViolation", constraint: { index: "setting_imageKey_key" } },
+                    },
+                },
+            })
+        );
+
+        await expect(SettingRepository.update("setting-1", "user-1", data)).resolves.toBe("image_key_taken");
+    });
+
+    it("imageKey 以外の P2002 はそのまま throw する", async () => {
+        const error = new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+            code: "P2002",
+            clientVersion: "test",
+            meta: { target: ["title"] },
+        });
+        mockedUpdate.mockRejectedValue(error);
+
+        await expect(SettingRepository.update("setting-1", "user-1", data)).rejects.toBe(error);
+    });
+
+    it("P2025・P2002 以外のエラーはそのまま throw する", async () => {
         const dbError = createKnownRequestError("P2003");
         mockedUpdate.mockRejectedValue(dbError);
 

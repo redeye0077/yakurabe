@@ -1,8 +1,9 @@
 import { loadAppConfig } from "@/server/config/app-config";
 import { loadMailConfig } from "@/server/mail/mail-config";
+import { loadStorageConfig } from "@/server/storage/storage-config";
 
 /**
- * APP_URL・メール設定の漏れを起動時に検知し、サーバーを起動させない。
+ * APP_URL・メール設定・画像ストレージ設定の漏れを起動時に検知し、サーバーを起動させない。
  * 登録時のメール送信失敗は握りつぶして登録成功扱いにしているため、
  * 設定ミスをリクエスト時まで持ち越すと「登録はできるがメールが届かない」状態に気づけない。
  *
@@ -12,6 +13,7 @@ import { loadMailConfig } from "@/server/mail/mail-config";
 try {
   loadAppConfig();
   loadMailConfig();
+  loadStorageConfig();
 } catch (error) {
   console.error("[startup] 環境変数の設定に不備があるため起動を中止します", error);
   process.exit(1);

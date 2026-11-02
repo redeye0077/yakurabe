@@ -26,10 +26,21 @@ services:
       MAIL_FROM: "no-reply@yakurabe.local"
       SMTP_HOST: "mailpit"
       SMTP_PORT: "1025"
+      # 開発環境では画像を S3Mock に保存する(認証情報は検証されないのでダミー)
+      S3_REGION: "ap-northeast-1"
+      S3_BUCKET: "yakurabe-dev"
+      S3_ACCESS_KEY_ID: "dummy"
+      S3_SECRET_ACCESS_KEY: "dummy"
+      S3_PUBLIC_BASE_URL: "http://localhost:9090/yakurabe-dev"
+      # サーバー(このコンテナ)からはサービス名 "s3mock"、ブラウザからは localhost で届く
+      S3_ENDPOINT: "http://s3mock:9090"
+      S3_PUBLIC_ENDPOINT: "http://localhost:9090"
     depends_on:
       db:
         condition: service_healthy
       mailpit:
+        condition: service_started
+      s3mock:
         condition: service_started
     command: npm run dev
 
@@ -41,6 +52,22 @@ services:
     ports:
       - "1025:1025" # SMTP
       - "8025:8025" # Web UI
+
+  # 開発用の S3 互換サーバー。画像は http://localhost:9090/yakurabe-dev/<key> で表示できる
+  # 署名・アップロード条件(サイズ・形式)・CORS の許可元は検証しない(本番 S3 では検証される)
+  # 本番(docker-compose.prod.yml)には含めない
+  s3mock:
+    image: adobe/s3mock:5.2.3
+    restart: unless-stopped
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: "yakurabe-dev"
+      # 既定では停止時にデータを消すため、名前付きボリュームに残す
+      COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT: "true"
+      COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: "/s3mockroot"
+    ports:
+      - "127.0.0.1:9090:9090" # ブラウザから署名付き URL でアップロード・画像を表示する用
+    volumes:
+      - s3mock_data:/s3mockroot
 
   db:
     image: mysql:8.0
@@ -61,3 +88,4 @@ services:
 
 volumes:
   db_data:
+  s3mock_data:

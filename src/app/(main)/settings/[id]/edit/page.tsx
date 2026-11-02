@@ -9,6 +9,7 @@ import { FlightService } from "@/server/services/flight.service";
 import { TipService } from "@/server/services/tip.service";
 import { SettingForm } from "@/components/features/setting/setting-form";
 import { updateSettingAction } from "@/app/(main)/settings/[id]/edit/actions";
+import { createSettingImageUploadAction } from "@/app/(main)/settings/actions";
 
 type EditSettingPageProps = {
   params: Promise<{ id: string }>;
@@ -51,6 +52,8 @@ export default async function EditSettingPage({ params }: EditSettingPageProps) 
         <div className="mt-6">
           <SettingForm
             action={updateSettingAction.bind(null, id)}
+            imageUploadAction={createSettingImageUploadAction}
+            currentImageUrl={result.setting.imageUrl}
             defaultValues={toSettingFormValues(result.setting)}
             submitLabel="更新する"
             pendingLabel="更新中..."
