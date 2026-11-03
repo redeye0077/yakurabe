@@ -28,6 +28,16 @@ describe("LatestSettings", () => {
         expect(screen.getByRole("heading", { level: 3, name: "セッティング 1" })).toBeInTheDocument();
     });
 
+    it("見出しの下に、サンプルの画像が AI で生成したイメージであることの一文を表示する", () => {
+        render(<LatestSettings settings={[createSetting("1")]} />);
+
+        expect(
+            screen.getByText(
+                "【サンプル】の投稿の画像はAIで生成したイメージで、実際の商品とは色や形が異なります。"
+            )
+        ).toBeInTheDocument();
+    });
+
     it("0件の場合は「もっと見る」を表示しない", () => {
         render(<LatestSettings settings={[]} />);
 
