@@ -16,6 +16,7 @@ import {
   SettingNotFoundError,
   SettingRuleError,
 } from "@/server/errors/setting.error";
+import { ValidationError } from "@/server/errors/validation.error";
 import { calcTotalPrice } from "@/lib/setting-price";
 import {
   buildSettingImageKey,
@@ -24,6 +25,7 @@ import {
   parseSettingImageKey,
   SETTING_IMAGE_MAX_BYTES,
   SETTING_IMAGE_SIZE_MESSAGE,
+  SETTING_IMAGE_TYPE_MESSAGE,
   type SettingImageType,
 } from "@/lib/setting-image";
 import { getObjectStorage } from "@/server/storage/get-object-storage";
@@ -314,6 +316,26 @@ export const SettingService = {
     if (deleted.imageKey !== null) {
       await deleteUnreferencedImage(deleted.imageKey);
     }
+  },
+
+  /**
+   * Seed専用。APIからは公開しない。サンプルセッティングの画像をサーバーから保存し、保存先キーを返す。
+   * キーは settings/{userId}/{uuid}.{拡張子}。uuid を固定して毎回同じキーに上書きするため、
+   * Seed を再実行しても画像は増えない(UUID を変えずにファイルを差し替えれば、次の Seed で反映される)。
+   * 形式(先頭バイト)とサイズは登録フォームと同じルールで検証し、違反していれば ValidationError を throw する
+   */
+  async uploadSeedImage(userId: string, uuid: string, body: Uint8Array): Promise<string> {
+    const type = detectImageType(body);
+    if (type === null) {
+      throw new ValidationError(SETTING_IMAGE_TYPE_MESSAGE);
+    }
+    if (body.byteLength > SETTING_IMAGE_MAX_BYTES) {
+      throw new ValidationError(SETTING_IMAGE_SIZE_MESSAGE);
+    }
+
+    const key = buildSettingImageKey(userId, type, uuid);
+    await getObjectStorage().put(key, body, type);
+    return key;
   },
 
   // Seed専用。APIからは公開しない。Seedを再実行しても重複しないよう固定idでupsertする
