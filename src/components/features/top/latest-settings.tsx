@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SettingGrid } from "@/components/features/setting/setting-grid";
+import { SampleImageNote } from "@/components/features/setting/sample-image-note";
 import type { SettingListItemDto } from "@/server/dto/setting.dto";
 
 type LatestSettingsProps = {
@@ -23,6 +24,7 @@ export function LatestSettings({ settings }: LatestSettingsProps) {
           </Link>
         )}
       </div>
+      <SampleImageNote className="mt-2" />
       <div className="mt-5">
         <SettingGrid settings={settings} headingLevel={3} />
       </div>
