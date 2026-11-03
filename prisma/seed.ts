@@ -6,6 +6,8 @@
  * 投稿データ(ユーザーが作ったセッティング)には触れない。
  * 商品マスタはこのファイルが唯一の正。変更はここを直して再実行する(Prisma Studioでの手修正は上書きされる)
  */
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { prisma } from "@/lib/prisma";
 import { BarrelService } from "@/server/services/barrel.service";
 import { CreateBarrelInput } from "@/schemas/barrel";
@@ -306,17 +308,46 @@ async function seedSampleUsers() {
   }
 }
 
+// サンプル画像の置き場所。cwd に依存しないよう、このファイルの場所を基準にする
+const SEED_IMAGES_DIR = join(__dirname, "seed-images");
+
+// サンプル画像は AI で生成したため、説明文の末尾にその旨を足す
+const AI_IMAGE_NOTE = "画像はAIで生成したイメージで、実際の商品とは色や形が異なります。";
+
+// 画像はファイル名と固定の UUID で指定する。保存先キーは settings/{持ち主の userId}/{uuid}.jpg になり、
+// Seed を再実行しても同じキーに上書きされる(写真は UUID を変えずにファイルだけ差し替える)
+type SampleSetting = WithId<Omit<UpsertSettingInput, "imageKey">> & {
+  image: { fileName: string; uuid: string };
+};
+
+// 画像を S3 に保存し、保存先キーを返す。失敗したら、どのセッティングのどのファイルかを添えて投げ直す(元のエラーは cause)
+async function uploadSampleImage(
+  settingId: string,
+  userId: string,
+  { fileName, uuid }: SampleSetting["image"]
+): Promise<string> {
+  try {
+    const body = new Uint8Array(await readFile(join(SEED_IMAGES_DIR, fileName)));
+    return await SettingService.uploadSeedImage(userId, uuid, body);
+  } catch (error) {
+    throw new Error(
+      `サンプルセッティング ${settingId} の画像(prisma/seed-images/${fileName})を保存できませんでした`,
+      { cause: error }
+    );
+  }
+}
+
 // 一覧が空にならないよう表示するサンプル。シャフトとフライトは規格(flightSystem)をそろえ、
 // 一体型フライトの場合はシャフトを null にする。createdAt は古い日付にして、新着順の末尾に並ぶようにする
 async function seedSampleSettings() {
-  const settings: WithId<UpsertSettingInput>[] = [
+  const settings: SampleSetting[] = [
     {
       id: "sample-setting-01",
       userId: SAMPLE_USER_IDS.takkun,
       title: "【サンプル】フィット規格でそろえた安定重視セッティング",
       description:
         "サンプルとして登録しているセッティングです。シャフトとフライトをフィット規格でそろえ、スピンシャフトで飛びを安定させる組み合わせ。",
-      imageKey: null,
+      image: { fileName: "sample-setting-01.jpeg", uuid: "e366b9dd-7066-4adf-9a14-0e14f4518877" },
       barrelId: "seed-barrel-01", // DISCOVERY LABEL Jeff Smith 2BA
       shaftId: "seed-shaft-02", // Fit Shaft COLOR Carbon ノーマル スピン 24.0mm
       flightId: "seed-flight-03", // Fit Flight AIR × Ami Komiyama ver.4
@@ -329,7 +360,7 @@ async function seedSampleSettings() {
       title: "【サンプル】L-style でそろえたストレートセッティング",
       description:
         "サンプルとして登録しているセッティングです。ストレートバレルに汎用規格のL-SHaftとL-Flightを合わせた組み合わせ。",
-      imageKey: null,
+      image: { fileName: "sample-setting-02.jpeg", uuid: "9879bc90-5448-4bfc-8d3f-ce394217b367" },
       barrelId: "seed-barrel-03", // KATANA Houju 2BA
       shaftId: "seed-shaft-01", // L-SHaft Carbon ロック スリム 37.0mm
       flightId: "seed-flight-01", // L-Flight PRO DYNASTY Sachika ver.1 スモール
@@ -342,7 +373,7 @@ async function seedSampleSettings() {
       title: "【サンプル】シャフト一体型フライトのセッティング",
       description:
         "サンプルとして登録しているセッティングです。シャフト一体型フライトを使うため、シャフトは選んでいません。",
-      imageKey: null,
+      image: { fileName: "sample-setting-03.jpeg", uuid: "22e2ca7a-1c8e-4333-8942-21bbc1b377a9" },
       barrelId: "seed-barrel-04", // Mao ver.5 2BA 18g Cherry Red
       shaftId: null,
       flightId: "seed-flight-02", // GAME OVER K-FLEX スタンダード ブラック 26.0mm(一体型)
@@ -355,7 +386,7 @@ async function seedSampleSettings() {
       title: "【サンプル】8FLIGHT でそろえたコスパ重視セッティング",
       description:
         "サンプルとして登録しているセッティングです。シャフトとフライトをエイト規格でそろえ、消耗品を手頃な価格に抑えた組み合わせ。",
-      imageKey: null,
+      image: { fileName: "sample-setting-04.jpeg", uuid: "7a095f98-c00c-4788-a0c8-7a08d55f66d8" },
       barrelId: "seed-barrel-05", // Undisputed ROMERO Type4 2BA
       shaftId: "seed-shaft-04", // 8FLIGHT シャフト レギュラー FIXED ホワイト 29.5mm
       flightId: "seed-flight-04", // 8FLIGHT スリム
@@ -364,8 +395,13 @@ async function seedSampleSettings() {
     },
   ];
 
-  for (const { id, ...data } of settings) {
-    await SettingService.upsert(id, data);
+  for (const { id, image, description, ...data } of settings) {
+    const imageKey = await uploadSampleImage(id, data.userId, image);
+    await SettingService.upsert(id, {
+      ...data,
+      description: `${description}${AI_IMAGE_NOTE}`,
+      imageKey,
+    });
   }
 }
 

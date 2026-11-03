@@ -2,6 +2,7 @@ import "server-only";
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  PutObjectCommand,
   S3Client,
   S3ServiceException,
 } from "@aws-sdk/client-s3";
@@ -130,6 +131,12 @@ export class S3ObjectStorage implements ObjectStorage {
       }
       throw error;
     }
+  }
+
+  async put(key: string, body: Uint8Array, contentType: string): Promise<void> {
+    await this.client.send(
+      new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType })
+    );
   }
 
   async delete(key: string): Promise<void> {
