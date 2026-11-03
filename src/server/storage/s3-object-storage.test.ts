@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  PutObjectCommand,
   S3Client,
   S3ServiceException,
 } from "@aws-sdk/client-s3";
@@ -157,6 +158,32 @@ describe("S3ObjectStorage.inspect", () => {
     await expect(createStorage().inspect("settings/user-1/abc.jpg")).rejects.toBeInstanceOf(
       S3ServiceException
     );
+  });
+});
+
+describe("S3ObjectStorage.put", () => {
+  it("PutObject を1回だけ呼び、バケット・キー・中身・Content-Type を渡す", async () => {
+    const send = vi.spyOn(S3Client.prototype, "send").mockImplementation(async () => ({}));
+    const body = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
+    await createStorage().put("settings/user-1/abc.jpg", body, "image/jpeg");
+    expect(send).toHaveBeenCalledTimes(1);
+    const command = send.mock.calls[0][0];
+    expect(command).toBeInstanceOf(PutObjectCommand);
+    expect(command.input).toEqual({
+      Bucket: "yakurabe-test",
+      Key: "settings/user-1/abc.jpg",
+      Body: body,
+      ContentType: "image/jpeg",
+    });
+  });
+
+  it("送信に失敗したらエラーをそのまま投げる", async () => {
+    vi.spyOn(S3Client.prototype, "send").mockImplementation(async () => {
+      throw s3Error(403);
+    });
+    await expect(
+      createStorage().put("settings/user-1/abc.jpg", new Uint8Array([1]), "image/jpeg")
+    ).rejects.toBeInstanceOf(S3ServiceException);
   });
 });
 

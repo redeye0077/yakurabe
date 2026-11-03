@@ -594,12 +594,13 @@ describe("SettingService.update", () => {
     });
 });
 
-// 画像の確認・削除・発行を差し替えた保存先。表示用 URL は本物と同じ組み立てにする
+// 画像の確認・保存・削除・発行を差し替えた保存先。表示用 URL は本物と同じ組み立てにする
 function useFakeStorage() {
     const real = createStorage();
     const storage = {
         createPresignedUpload: vi.fn<ObjectStorage["createPresignedUpload"]>(),
         inspect: vi.fn<ObjectStorage["inspect"]>(),
+        put: vi.fn<ObjectStorage["put"]>(),
         delete: vi.fn<ObjectStorage["delete"]>(),
         publicUrl: (key: string) => real.publicUrl(key),
     } satisfies ObjectStorage;
