@@ -59,16 +59,29 @@ export function detectImageType(bytes: Uint8Array): SettingImageType | null {
 /** 保存先キーの先頭。バケットの公開読み取り・IAM の許可はこの prefix(settings/*)に限っている */
 const SETTING_IMAGE_KEY_PREFIX = "settings";
 
+/** キーに使う UUID の形(crypto.randomUUID() と同じ小文字の16進数) */
+const UUID_PATTERN_SOURCE = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+const UUID_PATTERN = new RegExp(`^${UUID_PATTERN_SOURCE}$`);
+
 /**
  * 保存先キーを作る: settings/{userId}/{UUID}.{拡張子}
- * userId を含めるのは、保存時に「本人がアップロードした画像か」をキーで確認するため
+ * userId を含めるのは、保存時に「本人がアップロードした画像か」をキーで確認するため。
+ * uuid は Seed で毎回同じキーにするときだけ渡す(省略すればランダム)。
+ * 形が違う uuid ではキーが parseSettingImageKey を通らなくなるため、その場合は Error を throw する
  */
-export function buildSettingImageKey(userId: string, type: SettingImageType): string {
-  return `${SETTING_IMAGE_KEY_PREFIX}/${userId}/${crypto.randomUUID()}.${SETTING_IMAGE_EXTENSIONS[type]}`;
+export function buildSettingImageKey(
+  userId: string,
+  type: SettingImageType,
+  uuid: string = crypto.randomUUID()
+): string {
+  if (!UUID_PATTERN.test(uuid)) {
+    throw new Error(`保存先キーに使う UUID の形が正しくありません: ${uuid}`);
+  }
+  return `${SETTING_IMAGE_KEY_PREFIX}/${userId}/${uuid}.${SETTING_IMAGE_EXTENSIONS[type]}`;
 }
 
 const SETTING_IMAGE_KEY_PATTERN = new RegExp(
-  `^${SETTING_IMAGE_KEY_PREFIX}/([A-Za-z0-9_-]+)/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.(jpg|png|webp)$`
+  `^${SETTING_IMAGE_KEY_PREFIX}/([A-Za-z0-9_-]+)/${UUID_PATTERN_SOURCE}\\.(jpg|png|webp)$`
 );
 
 const TYPE_BY_EXTENSION = Object.fromEntries(
