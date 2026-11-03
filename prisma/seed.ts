@@ -287,14 +287,23 @@ async function seedTips() {
   }
 }
 
-const SAMPLE_USER_ID = "sample-user-01";
+const SAMPLE_USER_IDS = {
+  takkun: "sample-user-01",
+  misakichi: "sample-user-02",
+  youchan: "sample-user-03",
+} as const;
 
-// サンプルセッティングの投稿者。ログインはできない(UserService.upsertSampleUser を参照)
-async function seedSampleUser() {
-  await UserService.upsertSampleUser(SAMPLE_USER_ID, {
-    email: "sample-user-01@yakurabe.invalid",
-    username: "サンプルユーザー",
-  });
+// サンプルセッティングの投稿者(3人)。ログインはできない(UserService.upsertSampleUser を参照)
+async function seedSampleUsers() {
+  const users = [
+    { id: SAMPLE_USER_IDS.takkun, email: "sample-user-01@yakurabe.invalid", username: "たっくん" },
+    { id: SAMPLE_USER_IDS.misakichi, email: "sample-user-02@yakurabe.invalid", username: "みさきち" },
+    { id: SAMPLE_USER_IDS.youchan, email: "sample-user-03@yakurabe.invalid", username: "ようちゃん" },
+  ];
+
+  for (const { id, ...data } of users) {
+    await UserService.upsertSampleUser(id, data);
+  }
 }
 
 // 一覧が空にならないよう表示するサンプル。シャフトとフライトは規格(flightSystem)をそろえ、
@@ -303,7 +312,7 @@ async function seedSampleSettings() {
   const settings: WithId<UpsertSettingInput>[] = [
     {
       id: "sample-setting-01",
-      userId: SAMPLE_USER_ID,
+      userId: SAMPLE_USER_IDS.takkun,
       title: "【サンプル】フィット規格でそろえた安定重視セッティング",
       description:
         "サンプルとして登録しているセッティングです。シャフトとフライトをフィット規格でそろえ、スピンシャフトで飛びを安定させる組み合わせ。",
@@ -316,7 +325,7 @@ async function seedSampleSettings() {
     },
     {
       id: "sample-setting-02",
-      userId: SAMPLE_USER_ID,
+      userId: SAMPLE_USER_IDS.takkun,
       title: "【サンプル】L-style でそろえたストレートセッティング",
       description:
         "サンプルとして登録しているセッティングです。ストレートバレルに汎用規格のL-SHaftとL-Flightを合わせた組み合わせ。",
@@ -329,7 +338,7 @@ async function seedSampleSettings() {
     },
     {
       id: "sample-setting-03",
-      userId: SAMPLE_USER_ID,
+      userId: SAMPLE_USER_IDS.misakichi,
       title: "【サンプル】シャフト一体型フライトのセッティング",
       description:
         "サンプルとして登録しているセッティングです。シャフト一体型フライトを使うため、シャフトは選んでいません。",
@@ -342,7 +351,7 @@ async function seedSampleSettings() {
     },
     {
       id: "sample-setting-04",
-      userId: SAMPLE_USER_ID,
+      userId: SAMPLE_USER_IDS.youchan,
       title: "【サンプル】8FLIGHT でそろえたコスパ重視セッティング",
       description:
         "サンプルとして登録しているセッティングです。シャフトとフライトをエイト規格でそろえ、消耗品を手頃な価格に抑えた組み合わせ。",
@@ -366,7 +375,7 @@ async function main() {
   await seedFlights();
   await seedTips();
   // セッティングは商品とユーザーを参照するため最後に投入する
-  await seedSampleUser();
+  await seedSampleUsers();
   await seedSampleSettings();
 }
 
