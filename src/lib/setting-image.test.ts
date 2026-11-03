@@ -88,6 +88,26 @@ describe("buildSettingImageKey", () => {
     );
   });
 
+  it("uuid を渡すとそれを使い、ランダムな UUID は作らない", () => {
+    const randomUUID = vi.spyOn(crypto, "randomUUID");
+    expect(buildSettingImageKey("sample-user-01", "image/jpeg", UUID)).toBe(
+      `settings/sample-user-01/${UUID}.jpg`
+    );
+    expect(randomUUID).not.toHaveBeenCalled();
+  });
+
+  it("同じ uuid を渡せば毎回同じキーになり、parseSettingImageKey で読み戻せる", () => {
+    const key = buildSettingImageKey("sample-user-01", "image/jpeg", UUID);
+    expect(buildSettingImageKey("sample-user-01", "image/jpeg", UUID)).toBe(key);
+    expect(parseSettingImageKey(key)).toEqual({ userId: "sample-user-01", type: "image/jpeg" });
+  });
+
+  it("形が違う uuid(大文字・桁違い・空)は Error を throw する", () => {
+    expect(() => buildSettingImageKey("user1", "image/jpeg", UUID.toUpperCase())).toThrow(Error);
+    expect(() => buildSettingImageKey("user1", "image/jpeg", UUID.slice(1))).toThrow(Error);
+    expect(() => buildSettingImageKey("user1", "image/jpeg", "")).toThrow(Error);
+  });
+
   it("作ったキーは parseSettingImageKey で読み戻せる(cuid の userId)", () => {
     const userId = "cmgk1x2y30000abcd1234efgh";
     expect(parseSettingImageKey(buildSettingImageKey(userId, "image/webp"))).toEqual({

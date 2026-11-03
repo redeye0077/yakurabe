@@ -16,6 +16,7 @@ import {
     SettingRuleError,
     SettingRuleField,
 } from "@/server/errors/setting.error";
+import { ValidationError } from "@/server/errors/validation.error";
 import type { ObjectInspection, ObjectStorage } from "@/server/storage/object-storage";
 import { S3ObjectStorage } from "@/server/storage/s3-object-storage";
 import { getObjectStorage } from "@/server/storage/get-object-storage";
@@ -594,12 +595,13 @@ describe("SettingService.update", () => {
     });
 });
 
-// 画像の確認・削除・発行を差し替えた保存先。表示用 URL は本物と同じ組み立てにする
+// 画像の確認・保存・削除・発行を差し替えた保存先。表示用 URL は本物と同じ組み立てにする
 function useFakeStorage() {
     const real = createStorage();
     const storage = {
         createPresignedUpload: vi.fn<ObjectStorage["createPresignedUpload"]>(),
         inspect: vi.fn<ObjectStorage["inspect"]>(),
+        put: vi.fn<ObjectStorage["put"]>(),
         delete: vi.fn<ObjectStorage["delete"]>(),
         publicUrl: (key: string) => real.publicUrl(key),
     } satisfies ObjectStorage;
@@ -1009,5 +1011,75 @@ describe("SettingService.update の画像", () => {
             SettingService.update("user-1", "setting-1", createInput({ imageKey: PNG_KEY }))
         ).rejects.toThrow("Unique constraint failed");
         expect(storage.delete).not.toHaveBeenCalled();
+    });
+});
+
+describe("SettingService.uploadSeedImage", () => {
+    const SEED_UUID = "123e4567-e89b-42d3-a456-426614174000";
+
+    it("中身の形式から拡張子と Content-Type を決め、固定 UUID のキーで put してキーを返す", async () => {
+        const storage = useFakeStorage();
+        storage.put.mockResolvedValue();
+
+        const key = await SettingService.uploadSeedImage("sample-user-01", SEED_UUID, JPEG_HEAD);
+
+        expect(key).toBe(`settings/sample-user-01/${SEED_UUID}.jpg`);
+        expect(storage.put).toHaveBeenCalledTimes(1);
+        expect(storage.put).toHaveBeenCalledWith(key, JPEG_HEAD, "image/jpeg");
+    });
+
+    it("同じ userId と UUID なら毎回同じキーに put する(再実行しても画像が増えない)", async () => {
+        const storage = useFakeStorage();
+        storage.put.mockResolvedValue();
+
+        const first = await SettingService.uploadSeedImage("sample-user-02", SEED_UUID, PNG_HEAD);
+        const second = await SettingService.uploadSeedImage("sample-user-02", SEED_UUID, PNG_HEAD);
+
+        expect(second).toBe(first);
+        expect(storage.put).toHaveBeenNthCalledWith(1, first, PNG_HEAD, "image/png");
+        expect(storage.put).toHaveBeenNthCalledWith(2, first, PNG_HEAD, "image/png");
+    });
+
+    it.each([
+        ["画像でない", new TextEncoder().encode("<!doctype html>")],
+        ["空", new Uint8Array()],
+    ])("%s中身は ValidationError を throw し、put しない", async (_label, body) => {
+        const storage = useFakeStorage();
+
+        await expect(SettingService.uploadSeedImage("sample-user-01", SEED_UUID, body)).rejects.toThrow(
+            new ValidationError("JPEG・PNG・WebP の画像を選択してください")
+        );
+        expect(storage.put).not.toHaveBeenCalled();
+    });
+
+    it("5MB を超える画像は ValidationError を throw し、put しない", async () => {
+        const storage = useFakeStorage();
+        const body = new Uint8Array(5 * 1024 * 1024 + 1);
+        body.set(JPEG_HEAD);
+
+        await expect(SettingService.uploadSeedImage("sample-user-01", SEED_UUID, body)).rejects.toThrow(
+            new ValidationError("画像は 5MB 以下にしてください")
+        );
+        expect(storage.put).not.toHaveBeenCalled();
+    });
+
+    it("ちょうど 5MB の画像は put する", async () => {
+        const storage = useFakeStorage();
+        storage.put.mockResolvedValue();
+        const body = new Uint8Array(5 * 1024 * 1024);
+        body.set(JPEG_HEAD);
+
+        await SettingService.uploadSeedImage("sample-user-01", SEED_UUID, body);
+
+        expect(storage.put).toHaveBeenCalledTimes(1);
+    });
+
+    it("put に失敗したらエラーをそのまま投げる", async () => {
+        const storage = useFakeStorage();
+        storage.put.mockRejectedValue(new Error("S3 に接続できません"));
+
+        await expect(
+            SettingService.uploadSeedImage("sample-user-01", SEED_UUID, JPEG_HEAD)
+        ).rejects.toThrow("S3 に接続できません");
     });
 });

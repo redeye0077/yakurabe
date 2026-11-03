@@ -43,6 +43,12 @@ export interface ObjectStorage {
    */
   inspect(key: string): Promise<ObjectInspection | null>;
 
+  /**
+   * サーバーからオブジェクトを保存する(Seed 専用。画面からのアップロードは署名付き POST を使う)。
+   * 同じキーがあれば上書きする
+   */
+  put(key: string, body: Uint8Array, contentType: string): Promise<void>;
+
   /** オブジェクトを削除する。存在しなくてもエラーにはならない */
   delete(key: string): Promise<void>;
 
