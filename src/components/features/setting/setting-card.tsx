@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import { DartMark } from "@/components/common/dart-mark";
+import { SettingLevelBadge } from "@/components/features/setting/setting-level-badge";
 import type { SettingListItemDto } from "@/server/dto/setting.dto";
 
 type SettingCardProps = {
@@ -49,6 +50,7 @@ export function SettingCard({ setting, headingLevel, actions }: SettingCardProps
         <Heading className="line-clamp-2 text-[13.5px] leading-[1.4] font-bold text-brand-ink">
           {setting.title}
         </Heading>
+        <SettingLevelBadge level={setting.level} className="mt-2" />
         <dl className="mt-2.5 space-y-1 text-[12px] leading-[1.5]">
           {parts.map((part) => (
             <div key={part.label} className="flex gap-2">
