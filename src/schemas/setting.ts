@@ -54,7 +54,7 @@ export const createSettingSchema = z.object({
     z.string({ error: "シャフトの形式が正しくありません" }).nullable()
   ),
 
-  // 任意。「選択しない」(空文字)・未送信は null にする。DB には空文字を入れない
+  // 任意。"" と null(FormData.get が返す null。フォームに項目が無い場合も含む)は null にする。DB には空文字を入れない
   level: z.preprocess(
     (value) => (value === "" || value === null ? null : value),
     settingLevelSchema.nullable()
