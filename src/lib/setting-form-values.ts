@@ -14,6 +14,7 @@ export function readSettingFormData(formData: FormData): SettingFormInput {
     shaftId: formData.get("shaftId"),
     flightId: formData.get("flightId"),
     tipId: formData.get("tipId"),
+    level: formData.get("level"),
     imageKey: formData.get("imageKey"),
   };
 }
@@ -28,6 +29,7 @@ export function toFormValuesFromInput(input: SettingFormInput): SettingFormValue
     shaftId: str(input.shaftId),
     flightId: str(input.flightId),
     tipId: str(input.tipId),
+    level: str(input.level),
     // エラーで戻ったときのアップロード済み画像は Controller で削除しているため戻さない。
     // 画面は次の送信で、選択中のファイルをアップロードし直す
     imageKey: "",
@@ -43,6 +45,7 @@ export function toSettingFormValues(setting: SettingEditDto): SettingFormValues 
     shaftId: setting.shaftId ?? "",
     flightId: setting.flightId,
     tipId: setting.tipId,
+    level: setting.level ?? "",
     imageKey: "",
   };
 }

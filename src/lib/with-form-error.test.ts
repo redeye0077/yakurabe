@@ -31,6 +31,7 @@ describe("withFormError", () => {
             fieldErrors: { title: "タイトルを入力してください" },
             values: {
                 title: "",
+                level: "",
                 description: "",
                 barrelId: "",
                 shaftId: "",
@@ -56,6 +57,7 @@ describe("withFormError", () => {
             fieldErrors: {},
             values: {
                 title: "テストセッティング",
+                level: "",
                 description: "",
                 barrelId: "barrel-1",
                 shaftId: "shaft-1",

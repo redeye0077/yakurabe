@@ -352,6 +352,7 @@ async function seedSampleSettings() {
       shaftId: "seed-shaft-02", // Fit Shaft COLOR Carbon ノーマル スピン 24.0mm
       flightId: "seed-flight-03", // Fit Flight AIR × Ami Komiyama ver.4
       tipId: "seed-tip-03", // FIT POINT PLUS 2.0 2BA 60本
+      level: "BEGINNER",
       createdAt: new Date("2026-10-01T00:00:00.000Z"),
     },
     {
@@ -365,6 +366,7 @@ async function seedSampleSettings() {
       shaftId: "seed-shaft-01", // L-SHaft Carbon ロック スリム 37.0mm
       flightId: "seed-flight-01", // L-Flight PRO DYNASTY Sachika ver.1 スモール
       tipId: "seed-tip-01", // Premium Lip point 2BA 30本
+      level: "ADVANCED",
       createdAt: new Date("2026-10-01T01:00:00.000Z"),
     },
     {
@@ -378,6 +380,7 @@ async function seedSampleSettings() {
       shaftId: null,
       flightId: "seed-flight-02", // GAME OVER K-FLEX スタンダード ブラック 26.0mm(一体型)
       tipId: "seed-tip-05", // CRYO TIP 2BA 30本
+      level: "INTERMEDIATE",
       createdAt: new Date("2026-10-01T02:00:00.000Z"),
     },
     {
@@ -391,6 +394,7 @@ async function seedSampleSettings() {
       shaftId: "seed-shaft-04", // 8FLIGHT シャフト レギュラー FIXED ホワイト 29.5mm
       flightId: "seed-flight-04", // 8FLIGHT スリム
       tipId: "seed-tip-04", // TIP ULTIMATE 2BA 40本
+      level: null,
       createdAt: new Date("2026-10-01T03:00:00.000Z"),
     },
   ];

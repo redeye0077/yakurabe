@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `setting` ADD COLUMN `level` ENUM('BEGINNER', 'INTERMEDIATE', 'ADVANCED') NULL;
