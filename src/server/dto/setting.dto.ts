@@ -1,7 +1,10 @@
+import type { SettingLevel } from "@/schemas/setting-level";
+
 // 一覧・トップの新着で表示するセッティング
 export type SettingListItemDto = {
   id: string;
   title: string;
+  level: SettingLevel | null; // 対象レベル。未設定なら null で、画面ではバッジを表示しない
   imageUrl: string | null; // 表示用 URL(Service で保存先キーから組み立てる)。未設定なら画面側で DartMark を表示する
   barrelName: string;
   shaftName: string | null; // シャフト一体型フライトの場合は null
@@ -17,6 +20,7 @@ export type SettingListItemDto = {
 export type SettingEditDto = {
   title: string;
   description: string | null;
+  level: SettingLevel | null; // 未設定なら null
   imageUrl: string | null; // 表示用 URL。未設定なら null
   barrelId: string;
   shaftId: string | null; // シャフト一体型フライトの場合は null

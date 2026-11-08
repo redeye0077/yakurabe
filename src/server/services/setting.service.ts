@@ -49,6 +49,7 @@ function toListItemDto(setting: SettingListItemRecord): SettingListItemDto {
   return {
     id: setting.id,
     title: setting.title,
+    level: setting.level,
     imageUrl: toImageUrl(setting.imageKey),
     barrelName: setting.barrel.name,
     shaftName: setting.shaft?.name ?? null,
@@ -238,6 +239,7 @@ export const SettingService = {
     return {
       title: setting.title,
       description: setting.description,
+      level: setting.level,
       imageUrl: toImageUrl(setting.imageKey),
       barrelId: setting.barrelId,
       shaftId: setting.shaftId,

@@ -8,6 +8,7 @@ describe("createSettingSchema", () => {
     const validInput = {
         title: "テストセッティング",
         description: "特徴・使用感",
+        level: null,
         barrelId: "barrel-1",
         shaftId: "shaft-1",
         flightId: "flight-1",
@@ -95,6 +96,7 @@ describe("createSettingSchema の imageKey", () => {
     const base = {
         title: "テストセッティング",
         description: "",
+        level: null,
         barrelId: "barrel-1",
         shaftId: "shaft-1",
         flightId: "flight-1",

@@ -30,6 +30,7 @@ const mockedUpdate = vi.mocked(SettingService.update);
 const validInput = {
     title: " テストセッティング ",
     description: "",
+    level: "",
     barrelId: "barrel-1",
     shaftId: "",
     flightId: "flight-1",
@@ -51,6 +52,7 @@ describe("SettingController.create", () => {
         expect(mockedCreate).toHaveBeenCalledWith("user-1", {
             title: "テストセッティング",
             description: null,
+            level: null,
             barrelId: "barrel-1",
             shaftId: null,
             flightId: "flight-1",
@@ -246,6 +248,7 @@ describe("SettingController.getForEdit", () => {
     const setting = {
         title: "テストセッティング",
         description: null,
+        level: null,
         imageUrl: null,
         barrelId: "barrel-1",
         shaftId: "shaft-1",
@@ -300,6 +303,7 @@ describe("SettingController.update", () => {
         expect(mockedUpdate).toHaveBeenCalledWith("user-1", "setting-1", {
             title: "テストセッティング",
             description: null,
+            level: null,
             barrelId: "barrel-1",
             shaftId: null,
             flightId: "flight-1",

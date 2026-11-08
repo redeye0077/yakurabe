@@ -98,6 +98,7 @@ function mockValidIntegratedProducts() {
 function createInput(overrides: Partial<CreateSettingServiceInput> = {}): CreateSettingServiceInput {
     return {
         title: "テストセッティング",
+        level: null,
         description: "テスト",
         barrelId: "barrel-1",
         shaftId: "shaft-1",
@@ -121,6 +122,7 @@ function createFoundSetting(overrides: Partial<FoundSetting> = {}): FoundSetting
     return {
         id: "setting-1",
         title: "テストセッティング",
+        level: null,
         imageKey: IMAGE_KEY,
         createdAt: new Date("2026-10-01T00:00:00.000Z"),
         user: { username: "テストユーザー" },
@@ -136,6 +138,7 @@ function createEditRecord(overrides: Partial<SettingEditRecord> = {}): SettingEd
     return {
         userId: "user-1",
         title: "テストセッティング",
+        level: null,
         description: "テスト",
         imageKey: null,
         barrelId: "barrel-1",
@@ -162,6 +165,7 @@ describe("SettingService.listLatest", () => {
             {
                 id: "setting-1",
                 title: "テストセッティング",
+                level: null,
                 imageUrl: IMAGE_URL,
                 barrelName: "テストバレル",
                 shaftName: "テストシャフト",
@@ -239,6 +243,7 @@ describe("SettingService.listByUser", () => {
         expect(result[0]).toEqual({
             id: "setting-1",
             title: "テストセッティング",
+            level: null,
             imageUrl: IMAGE_URL,
             barrelName: "テストバレル",
             shaftName: "テストシャフト",
@@ -367,6 +372,7 @@ describe("SettingService.upsert", () => {
     const input: UpsertSettingInput = {
         userId: "user-1",
         title: "テストセッティング",
+        level: null,
         description: "テスト",
         imageKey: null,
         barrelId: "barrel-1",
@@ -504,6 +510,7 @@ describe("SettingService.getForEdit", () => {
         expect(mockedFindById).toHaveBeenCalledWith("setting-1");
         expect(result).toEqual({
             title: "テストセッティング",
+            level: null,
             description: null,
             imageUrl: null,
             barrelId: "barrel-1",
@@ -547,6 +554,7 @@ describe("SettingService.update", () => {
         // 画像を選んでいない(imageKey が null)ので imageKey は渡さない
         expect(mockedUpdate).toHaveBeenCalledWith("setting-1", "user-1", {
             title: "更新後のセッティング",
+            level: null,
             description: null,
             barrelId: "barrel-1",
             shaftId: "shaft-1",

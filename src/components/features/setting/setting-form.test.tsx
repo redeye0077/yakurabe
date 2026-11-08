@@ -36,6 +36,7 @@ const tips: TipListItemDto[] = [
 // 編集時の初期値。1件目と異なる選択肢を選んでおき、初期値が反映されたことを区別できるようにする
 const editValues: SettingFormValues = {
     title: "編集前のセッティング",
+    level: "",
     description: "編集前の使用感",
     barrelId: "barrel-2",
     shaftId: "shaft-2",
@@ -75,6 +76,7 @@ function returnTitleError(_prevState: SettingFormActionState, formData: FormData
         fieldErrors: { title: "タイトルを入力してください" },
         values: {
             title: str("title"),
+            level: str("level"),
             description: str("description"),
             barrelId: str("barrelId"),
             shaftId: str("shaftId"),
@@ -197,6 +199,8 @@ describe("SettingForm", () => {
             // 画像の入力欄が無い(imageUploadAction を渡していない)ため、画像は送らない
             const editFields: Partial<SettingFormValues> = { ...editValues };
             delete editFields.imageKey;
+            // TODO(ステップ3): 対象レベルの select を追加したら消す
+            delete editFields.level;
             expect(Object.fromEntries(formData)).toEqual(editFields);
         });
 

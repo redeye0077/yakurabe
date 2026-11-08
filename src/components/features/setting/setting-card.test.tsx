@@ -8,6 +8,7 @@ function createSetting(overrides: Partial<SettingListItemDto> = {}): SettingList
     return {
         id: "setting-1",
         title: "テストセッティング",
+        level: null,
         imageUrl: null,
         barrelName: "テストバレル",
         shaftName: "テストシャフト",
