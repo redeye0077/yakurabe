@@ -4,6 +4,7 @@ import { startTransition, useActionState, useMemo, useRef, useState, type FormEv
 import Image from "next/image";
 import { unstable_rethrow } from "next/navigation";
 import type { CreateSettingField } from "@/schemas/setting";
+import { SETTING_LEVELS, SETTING_LEVEL_LABELS } from "@/schemas/setting-level";
 import type {
   SettingFormAction,
   SettingFormActionState,
@@ -282,6 +283,28 @@ export function SettingForm({
           ))}
         </select>
         {fieldError("tipId")}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={fieldId("level")} className={labelClass}>
+          対象レベル(任意)
+        </Label>
+        {/* 「選択しない」は空文字で送り、Server 側の Zod で null にする */}
+        <select
+          id={fieldId("level")}
+          name="level"
+          defaultValue={values?.level ?? ""}
+          className={cn(controlClass, "h-[46px]")}
+          {...errorProps("level")}
+        >
+          <option value="">選択しない</option>
+          {SETTING_LEVELS.map((level) => (
+            <option key={level} value={level}>
+              {SETTING_LEVEL_LABELS[level]}
+            </option>
+          ))}
+        </select>
+        {fieldError("level")}
       </div>
 
       <div className="flex flex-col gap-2">

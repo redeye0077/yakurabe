@@ -12,6 +12,7 @@ import type { BarrelListItemDto } from "@/server/dto/barrel.dto";
 import type { ShaftListItemDto } from "@/server/dto/shaft.dto";
 import type { FlightListItemDto } from "@/server/dto/flight.dto";
 import type { TipListItemDto } from "@/server/dto/tip.dto";
+import { SETTING_LEVELS, SETTING_LEVEL_LABELS } from "@/schemas/setting-level";
 
 const mockedAction = vi.fn<(prevState: SettingFormActionState, formData: FormData) => Promise<SettingFormActionState>>();
 const mockedUploadAction = vi.fn<(input: { contentType: string; size: number }) => Promise<SettingImageUploadResult>>();
@@ -36,7 +37,7 @@ const tips: TipListItemDto[] = [
 // 編集時の初期値。1件目と異なる選択肢を選んでおき、初期値が反映されたことを区別できるようにする
 const editValues: SettingFormValues = {
     title: "編集前のセッティング",
-    level: "",
+    level: "INTERMEDIATE",
     description: "編集前の使用感",
     barrelId: "barrel-2",
     shaftId: "shaft-2",
@@ -92,6 +93,7 @@ function fillAllExceptTitle() {
     fireEvent.change(screen.getByLabelText("フライト"), { target: { value: "flight-1" } });
     fireEvent.change(screen.getByLabelText("シャフト"), { target: { value: "shaft-1" } });
     fireEvent.change(screen.getByLabelText("チップ"), { target: { value: "tip-2" } });
+    fireEvent.change(screen.getByLabelText("対象レベル(任意)"), { target: { value: "ADVANCED" } });
     fireEvent.change(screen.getByLabelText("特徴・使用感(任意)"), { target: { value: "テスト" } });
 }
 
@@ -118,10 +120,32 @@ describe("SettingForm", () => {
             shaftId: "shaft-1",
             flightId: "flight-1",
             tipId: "tip-2",
+            level: "ADVANCED",
         });
     });
 
-    it("入力エラーで戻ってきても、6項目の入力がフォームに残る", async () => {
+    it("対象レベルは「選択しない」を初期選択にし、選択肢の表示名を SETTING_LEVEL_LABELS から出す", () => {
+        renderForm();
+
+        const level = screen.getByLabelText<HTMLSelectElement>("対象レベル(任意)");
+        expect(level.value).toBe("");
+        expect(Array.from(level.options).map((option) => [option.value, option.text])).toEqual([
+            ["", "選択しない"],
+            ...SETTING_LEVELS.map((value) => [value, SETTING_LEVEL_LABELS[value]]),
+        ]);
+    });
+
+    it("対象レベルを選ばずに送信すると、level を空文字で送る", async () => {
+        mockedAction.mockResolvedValue(null);
+        renderForm();
+
+        fireEvent.click(screen.getByRole("button", { name: "登録する" }));
+
+        await waitFor(() => expect(mockedAction).toHaveBeenCalledTimes(1));
+        expect(mockedAction.mock.calls[0][1].get("level")).toBe("");
+    });
+
+    it("入力エラーで戻ってきても、7項目の入力がフォームに残る", async () => {
         mockedAction.mockImplementation(returnTitleError);
         renderForm();
 
@@ -135,6 +159,7 @@ describe("SettingForm", () => {
         expect(screen.getByLabelText<HTMLSelectElement>("フライト").value).toBe("flight-1");
         expect(screen.getByLabelText<HTMLSelectElement>("シャフト").value).toBe("shaft-1");
         expect(screen.getByLabelText<HTMLSelectElement>("チップ").value).toBe("tip-2");
+        expect(screen.getByLabelText<HTMLSelectElement>("対象レベル(任意)").value).toBe("ADVANCED");
         expect(screen.getByLabelText<HTMLTextAreaElement>("特徴・使用感(任意)").value).toBe("テスト");
     });
 
@@ -148,6 +173,25 @@ describe("SettingForm", () => {
         const title = screen.getByLabelText("タイトル");
         expect(title.getAttribute("aria-invalid")).toBe("true");
         expect(title.getAttribute("aria-describedby")).toBe(message.id);
+    });
+
+    it("対象レベルのエラーも、ほかの項目と同じく select の下に表示して関連付ける", async () => {
+        mockedAction.mockImplementation((_prevState, formData) =>
+            Promise.resolve({
+                fieldErrors: { level: "対象レベルの選択が正しくありません" },
+                values: Object.fromEntries(formData) as SettingFormValues,
+            })
+        );
+        renderForm();
+
+        fireEvent.click(screen.getByRole("button", { name: "登録する" }));
+
+        const message = await screen.findByText("対象レベルの選択が正しくありません");
+        const level = screen.getByLabelText("対象レベル(任意)");
+        expect(level.id).toBe("setting-level");
+        expect(message.id).toBe("setting-level-error");
+        expect(level.getAttribute("aria-invalid")).toBe("true");
+        expect(level.getAttribute("aria-describedby")).toBe(message.id);
     });
 
     it("送信中は送信ボタンを無効にし、完了したら戻す", async () => {
@@ -171,13 +215,14 @@ describe("SettingForm", () => {
     });
 
     describe("編集(defaultValues あり)", () => {
-        it("6項目に初期値を表示し、ボタンの文言を差し替える", () => {
+        it("7項目に初期値を表示し、ボタンの文言を差し替える", () => {
             renderEditForm();
 
             expect(screen.getByLabelText<HTMLInputElement>("タイトル").value).toBe("編集前のセッティング");
             expect(screen.getByLabelText<HTMLSelectElement>("バレル").value).toBe("barrel-2");
             expect(screen.getByLabelText<HTMLSelectElement>("フライト").value).toBe("flight-2");
             expect(screen.getByLabelText<HTMLSelectElement>("チップ").value).toBe("tip-2");
+            expect(screen.getByLabelText<HTMLSelectElement>("対象レベル(任意)").value).toBe("INTERMEDIATE");
             expect(screen.getByLabelText<HTMLTextAreaElement>("特徴・使用感(任意)").value).toBe("編集前の使用感");
             expect(screen.getByRole("button", { name: "更新する" })).toBeInTheDocument();
         });
@@ -199,9 +244,31 @@ describe("SettingForm", () => {
             // 画像の入力欄が無い(imageUploadAction を渡していない)ため、画像は送らない
             const editFields: Partial<SettingFormValues> = { ...editValues };
             delete editFields.imageKey;
-            // TODO(ステップ3): 対象レベルの select を追加したら消す
-            delete editFields.level;
             expect(Object.fromEntries(formData)).toEqual(editFields);
+        });
+
+        it("対象レベルが未設定(初期値が空文字)なら「選択しない」を表示し、そのまま送ると空文字で送る", async () => {
+            mockedAction.mockResolvedValue(null);
+            render(
+                <SettingForm
+                    action={mockedAction}
+                    defaultValues={{ ...editValues, level: "" }}
+                    submitLabel="更新する"
+                    barrels={barrels}
+                    shafts={shafts}
+                    flights={flights}
+                    tips={tips}
+                />
+            );
+
+            const level = screen.getByLabelText<HTMLSelectElement>("対象レベル(任意)");
+            expect(level.value).toBe("");
+            expect(level.selectedOptions[0].text).toBe("選択しない");
+
+            fireEvent.click(screen.getByRole("button", { name: "更新する" }));
+
+            await waitFor(() => expect(mockedAction).toHaveBeenCalledTimes(1));
+            expect(mockedAction.mock.calls[0][1].get("level")).toBe("");
         });
 
         it("action がメッセージを返したら、フォームの上部に表示し、入力値を残す", async () => {
@@ -222,6 +289,7 @@ describe("SettingForm", () => {
             );
             expect(screen.getByLabelText<HTMLInputElement>("タイトル").value).toBe("変更後のタイトル");
             expect(screen.getByLabelText<HTMLSelectElement>("シャフト").value).toBe("shaft-2");
+            expect(screen.getByLabelText<HTMLSelectElement>("対象レベル(任意)").value).toBe("INTERMEDIATE");
         });
     });
 });
