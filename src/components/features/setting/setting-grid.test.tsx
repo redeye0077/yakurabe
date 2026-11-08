@@ -8,6 +8,7 @@ function createSetting(id: string): SettingListItemDto {
     return {
         id,
         title: `セッティング ${id}`,
+        level: null,
         imageUrl: null,
         barrelName: "テストバレル",
         shaftName: "テストシャフト",

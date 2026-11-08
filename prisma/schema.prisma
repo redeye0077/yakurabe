@@ -116,6 +116,8 @@ model Setting {
   // 表示用 URL は保存せず、Service で DTO を作るときに S3_PUBLIC_BASE_URL と組み立てる
   // 同じ画像を複数のセッティングで共有すると、片方の削除で画像が消えるため一意にする
   imageKey    String?  @unique @db.VarChar(191)
+  // 任意。対象レベル(初心者向け/中級者向け/上級者向け)。未設定時は null で、画面ではバッジを表示しない
+  level       SettingLevel?
   barrelId    String
   shaftId     String?
   flightId    String
@@ -147,6 +149,13 @@ enum FlightSystem {
   FIT // フィット(COSMO DARTS)
   CLICK // クリック(Harrows)
   EIGHT // エイト(8FLIGHT)
+}
+
+// セッティングの対象レベル。値を増やすときは src/schemas/setting-level.ts も合わせる(一致しないと typecheck で失敗する)
+enum SettingLevel {
+  BEGINNER // 初心者向け
+  INTERMEDIATE // 中級者向け
+  ADVANCED // 上級者向け
 }
 
 enum TipThreadSize {

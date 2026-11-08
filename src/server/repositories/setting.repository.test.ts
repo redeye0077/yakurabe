@@ -42,6 +42,7 @@ describe("SettingRepository.findLatest", () => {
         select: {
             id: true,
             title: true,
+            level: true,
             imageKey: true,
             createdAt: true,
             user: { select: { username: true } },
@@ -81,6 +82,7 @@ describe("SettingRepository.findByUserId", () => {
             select: {
                 id: true,
                 title: true,
+                level: true,
                 imageKey: true,
                 createdAt: true,
                 user: { select: { username: true } },
@@ -107,6 +109,7 @@ describe("SettingRepository.create", () => {
             userId: "user-1",
             title: "テストセッティング",
             description: null,
+            level: null,
             imageKey: null,
             barrelId: "barrel-1",
             shaftId: "shaft-1",
@@ -128,6 +131,7 @@ describe("SettingRepository.create の UNIQUE 制約違反", () => {
         userId: "user-1",
         title: "テストセッティング",
         description: null,
+        level: null,
         imageKey: "settings/user-1/123e4567-e89b-42d3-a456-426614174000.png",
         barrelId: "barrel-1",
         shaftId: "shaft-1",
@@ -205,6 +209,7 @@ describe("SettingRepository.upsert", () => {
             userId: "user-1",
             title: "テストセッティング",
             description: "テスト",
+            level: null,
             imageKey: null,
             barrelId: "barrel-1",
             shaftId: null,
@@ -284,6 +289,7 @@ describe("SettingRepository.findById", () => {
             select: {
                 userId: true,
                 title: true,
+                level: true,
                 description: true,
                 imageKey: true,
                 barrelId: true,
@@ -299,6 +305,7 @@ describe("SettingRepository.findById", () => {
             userId: "user-1",
             title: "テストセッティング",
             description: null,
+            level: null,
             barrelId: "barrel-1",
             shaftId: null,
             flightId: "flight-1",
@@ -317,6 +324,7 @@ describe("SettingRepository.update", () => {
     const data: UpdateSettingRecordInput = {
         title: "更新後のセッティング",
         description: null,
+        level: null,
         barrelId: "barrel-2",
         shaftId: null,
         flightId: "flight-2",

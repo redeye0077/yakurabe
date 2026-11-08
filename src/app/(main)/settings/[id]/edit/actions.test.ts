@@ -40,6 +40,7 @@ const mockedRevalidatePath = vi.mocked(revalidatePath);
 const formValues = {
     title: "更新後のセッティング",
     description: "",
+    level: "",
     barrelId: "barrel-1",
     shaftId: "shaft-1",
     flightId: "flight-1",

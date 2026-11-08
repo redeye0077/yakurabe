@@ -1,10 +1,19 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type SettingLevel as PrismaSettingLevel } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import type { SettingLevel } from "@/schemas/setting-level";
+
+// 自前の SettingLevel(src/schemas/setting-level.ts)と Prisma の enum が同じ値か、双方向で型チェックする。
+// 片方にだけ値を足す・消すと、どちらかが false になり typecheck で失敗する(実行時には何もしない)
+type OwnLevelsExistInPrisma = SettingLevel extends PrismaSettingLevel ? true : false; // 自前 → Prisma
+type PrismaLevelsExistInOwn = PrismaSettingLevel extends SettingLevel ? true : false; // Prisma → 自前
+const settingLevelMatchesPrisma: [OwnLevelsExistInPrisma, PrismaLevelsExistInOwn] = [true, true];
+void settingLevelMatchesPrisma;
 
 export type UpsertSettingInput = {
   userId: string;
   title: string;
   description: string | null;
+  level: SettingLevel | null; // 対象レベル。未設定なら null
   imageKey: string | null; // S3 の保存先キー。表示用 URL は Service で組み立てる
   barrelId: string;
   shaftId: string | null;
@@ -20,6 +29,7 @@ export type CreateSettingRecordInput = Omit<UpsertSettingInput, "createdAt">;
 const settingListItemSelect = {
   id: true,
   title: true,
+  level: true,
   imageKey: true,
   createdAt: true,
   user: { select: { username: true } },
@@ -36,6 +46,7 @@ const settingEditSelect = {
   userId: true,
   title: true,
   description: true,
+  level: true,
   imageKey: true,
   barrelId: true,
   shaftId: true,

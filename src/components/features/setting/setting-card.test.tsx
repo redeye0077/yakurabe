@@ -3,11 +3,13 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { SettingCard } from "@/components/features/setting/setting-card";
 import type { SettingListItemDto } from "@/server/dto/setting.dto";
+import { SETTING_LEVEL_LABELS } from "@/schemas/setting-level";
 
 function createSetting(overrides: Partial<SettingListItemDto> = {}): SettingListItemDto {
     return {
         id: "setting-1",
         title: "テストセッティング",
+        level: null,
         imageUrl: null,
         barrelName: "テストバレル",
         shaftName: "テストシャフト",
@@ -58,6 +60,20 @@ describe("SettingCard", () => {
         render(<SettingCard headingLevel={3} setting={createSetting({ shaftName: null })} />);
 
         expect(screen.getByText("一体型")).toBeInTheDocument();
+    });
+
+    it("対象レベルがあれば、バッジに表示名を出す", () => {
+        render(<SettingCard headingLevel={3} setting={createSetting({ level: "BEGINNER" })} />);
+
+        expect(screen.getByText(SETTING_LEVEL_LABELS.BEGINNER)).toBeInTheDocument();
+    });
+
+    it("対象レベルが未設定(null)なら、バッジを表示しない", () => {
+        render(<SettingCard headingLevel={3} setting={createSetting({ level: null })} />);
+
+        for (const label of Object.values(SETTING_LEVEL_LABELS)) {
+            expect(screen.queryByText(label)).not.toBeInTheDocument();
+        }
     });
 
     it("投稿日は日本時間の日付で表示する", () => {

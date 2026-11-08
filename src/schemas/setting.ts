@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CONTROL_CHAR_REGEX } from "@/schemas/auth";
+import { settingLevelSchema } from "@/schemas/setting-level";
 import {
   SETTING_IMAGE_MAX_BYTES,
   SETTING_IMAGE_SIZE_MESSAGE,
@@ -51,6 +52,12 @@ export const createSettingSchema = z.object({
   shaftId: z.preprocess(
     (value) => (value === "" || value === null ? null : value),
     z.string({ error: "シャフトの形式が正しくありません" }).nullable()
+  ),
+
+  // 任意。"" と null(FormData.get が返す null。フォームに項目が無い場合も含む)は null にする。DB には空文字を入れない
+  level: z.preprocess(
+    (value) => (value === "" || value === null ? null : value),
+    settingLevelSchema.nullable()
   ),
 
   // 任意。画面が S3 にアップロードした画像の保存先キー。未選択(空文字・未送信)は null にする。

@@ -110,6 +110,7 @@ describe("EditSettingPage", () => {
             status: "success",
             setting: {
                 title: "編集前のセッティング",
+                level: null,
                 description: null,
                 imageUrl: null,
                 barrelId: "barrel-1",
@@ -133,6 +134,7 @@ describe("EditSettingPage", () => {
             status: "success",
             setting: {
                 title: "編集前のセッティング",
+                level: null,
                 description: null,
                 imageUrl: "http://localhost:9090/yakurabe-dev/settings/user-1/123e4567-e89b-42d3-a456-426614174000.png",
                 barrelId: "barrel-1",
@@ -154,6 +156,7 @@ describe("EditSettingPage", () => {
             status: "success",
             setting: {
                 title: "編集前のセッティング",
+                level: null,
                 description: null,
                 imageUrl: null,
                 barrelId: "barrel-1",

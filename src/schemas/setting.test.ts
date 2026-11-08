@@ -1,13 +1,16 @@
 import { describe, it, expect } from "vitest";
+import { z } from "zod";
 import {
     createSettingImageUploadSchema,
     createSettingSchema,
 } from "@/schemas/setting";
+import { SETTING_LEVELS } from "@/schemas/setting-level";
 
 describe("createSettingSchema", () => {
     const validInput = {
         title: "テストセッティング",
         description: "特徴・使用感",
+        level: null,
         barrelId: "barrel-1",
         shaftId: "shaft-1",
         flightId: "flight-1",
@@ -95,6 +98,7 @@ describe("createSettingSchema の imageKey", () => {
     const base = {
         title: "テストセッティング",
         description: "",
+        level: null,
         barrelId: "barrel-1",
         shaftId: "shaft-1",
         flightId: "flight-1",
@@ -124,6 +128,50 @@ describe("createSettingSchema の imageKey", () => {
             path: ["imageKey"],
             message: "画像を確認できませんでした。もう一度選択してください",
         });
+    });
+});
+
+describe("createSettingSchema の level", () => {
+    const base = {
+        title: "テストセッティング",
+        description: "",
+        barrelId: "barrel-1",
+        shaftId: "shaft-1",
+        flightId: "flight-1",
+        tipId: "tip-1",
+    };
+
+    it.each([
+        ["「選択しない」(空文字)", ""],
+        ["未送信(null)", null],
+    ])("%s なら null にする", (_label, level) => {
+        expect(createSettingSchema.parse({ ...base, level }).level).toBeNull();
+    });
+
+    it.each(SETTING_LEVELS)("%s はそのまま受け取る", (level) => {
+        expect(createSettingSchema.parse({ ...base, level }).level).toBe(level);
+    });
+
+    // スキーマを直接呼ぶ場合に level の渡し忘れを検知するため、キーが無い入力はエラーにする。
+    // フォーム経由の読み忘れは readSettingFormData の型で検知する
+    it("level キーがない入力は失敗する", () => {
+        const result = createSettingSchema.safeParse(base);
+        expect(result.success).toBe(false);
+        if (!result.success) {
+            expect(z.flattenError(result.error).fieldErrors.level).toEqual([
+                "対象レベルの選択が正しくありません",
+            ]);
+        }
+    });
+
+    it("定義に無い値(PRO)は fieldErrors.level にエラーを入れる", () => {
+        const result = createSettingSchema.safeParse({ ...base, level: "PRO" });
+        expect(result.success).toBe(false);
+        if (!result.success) {
+            expect(z.flattenError(result.error).fieldErrors.level).toEqual([
+                "対象レベルの選択が正しくありません",
+            ]);
+        }
     });
 });
 

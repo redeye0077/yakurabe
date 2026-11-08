@@ -33,6 +33,7 @@ function makeSetting(id: string, title: string): SettingListItemDto {
     return {
         id,
         title,
+        level: null,
         imageUrl: null,
         barrelName: "テストバレル",
         shaftName: "テストシャフト",
