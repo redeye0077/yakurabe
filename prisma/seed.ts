@@ -19,7 +19,8 @@ import { TipService } from "@/server/services/tip.service";
 import { CreateTipInput } from "@/schemas/tip";
 import { UserService } from "@/server/services/user.service";
 import { SettingService } from "@/server/services/setting.service";
-import { UpsertSettingInput } from "@/server/repositories/setting.repository";
+import { sampleUsers } from "./seed-data/sample-users";
+import { buildSampleDescription, sampleSettings, type SampleSetting } from "./seed-data/sample-settings";
 
 type WithId<T> = T & { id: string };
 
@@ -289,21 +290,9 @@ async function seedTips() {
   }
 }
 
-const SAMPLE_USER_IDS = {
-  takkun: "sample-user-01",
-  misakichi: "sample-user-02",
-  youchan: "sample-user-03",
-} as const;
-
-// サンプルセッティングの投稿者(3人)。ログインはできない(UserService.upsertSampleUser を参照)
+// サンプルセッティングの投稿者。ログインはできない(UserService.upsertSampleUser を参照)
 async function seedSampleUsers() {
-  const users = [
-    { id: SAMPLE_USER_IDS.takkun, email: "sample-user-01@yakurabe.invalid", username: "たっくん" },
-    { id: SAMPLE_USER_IDS.misakichi, email: "sample-user-02@yakurabe.invalid", username: "みさきち" },
-    { id: SAMPLE_USER_IDS.youchan, email: "sample-user-03@yakurabe.invalid", username: "ようちゃん" },
-  ];
-
-  for (const { id, ...data } of users) {
+  for (const { id, ...data } of sampleUsers) {
     await UserService.upsertSampleUser(id, data);
   }
 }
@@ -311,20 +300,11 @@ async function seedSampleUsers() {
 // サンプル画像の置き場所。cwd に依存しないよう、このファイルの場所を基準にする
 const SEED_IMAGES_DIR = join(__dirname, "seed-images");
 
-// サンプル画像は AI で生成したため、説明文の末尾にその旨を足す
-const AI_IMAGE_NOTE = "画像はAIで生成したイメージで、実際の商品とは色や形が異なります。";
-
-// 画像はファイル名と固定の UUID で指定する。保存先キーは settings/{持ち主の userId}/{uuid}.jpg になり、
-// Seed を再実行しても同じキーに上書きされる(写真は UUID を変えずにファイルだけ差し替える)
-type SampleSetting = WithId<Omit<UpsertSettingInput, "imageKey">> & {
-  image: { fileName: string; uuid: string };
-};
-
 // 画像を S3 に保存し、保存先キーを返す。失敗したら、どのセッティングのどのファイルかを添えて投げ直す(元のエラーは cause)
 async function uploadSampleImage(
   settingId: string,
   userId: string,
-  { fileName, uuid }: SampleSetting["image"]
+  { fileName, uuid }: NonNullable<SampleSetting["image"]>
 ): Promise<string> {
   try {
     const body = new Uint8Array(await readFile(join(SEED_IMAGES_DIR, fileName)));
@@ -337,73 +317,13 @@ async function uploadSampleImage(
   }
 }
 
-// 一覧が空にならないよう表示するサンプル。シャフトとフライトは規格(flightSystem)をそろえ、
-// 一体型フライトの場合はシャフトを null にする。createdAt は古い日付にして、新着順の末尾に並ぶようにする
+// 一覧が空にならないよう表示するサンプル。データと組み合わせのルールは prisma/seed-data/sample-settings.ts を参照
 async function seedSampleSettings() {
-  const settings: SampleSetting[] = [
-    {
-      id: "sample-setting-01",
-      userId: SAMPLE_USER_IDS.takkun,
-      title: "【サンプル】フィット規格でそろえた安定重視セッティング",
-      description:
-        "サンプルとして登録しているセッティングです。シャフトとフライトをフィット規格でそろえ、スピンシャフトで飛びを安定させる組み合わせ。",
-      image: { fileName: "sample-setting-01.jpeg", uuid: "e366b9dd-7066-4adf-9a14-0e14f4518877" },
-      barrelId: "seed-barrel-01", // DISCOVERY LABEL Jeff Smith 2BA
-      shaftId: "seed-shaft-02", // Fit Shaft COLOR Carbon ノーマル スピン 24.0mm
-      flightId: "seed-flight-03", // Fit Flight AIR × Ami Komiyama ver.4
-      tipId: "seed-tip-03", // FIT POINT PLUS 2.0 2BA 60本
-      level: "BEGINNER",
-      createdAt: new Date("2026-10-01T00:00:00.000Z"),
-    },
-    {
-      id: "sample-setting-02",
-      userId: SAMPLE_USER_IDS.takkun,
-      title: "【サンプル】L-style でそろえたストレートセッティング",
-      description:
-        "サンプルとして登録しているセッティングです。ストレートバレルに汎用規格のL-SHaftとL-Flightを合わせた組み合わせ。",
-      image: { fileName: "sample-setting-02.jpeg", uuid: "9879bc90-5448-4bfc-8d3f-ce394217b367" },
-      barrelId: "seed-barrel-03", // KATANA Houju 2BA
-      shaftId: "seed-shaft-01", // L-SHaft Carbon ロック スリム 37.0mm
-      flightId: "seed-flight-01", // L-Flight PRO DYNASTY Sachika ver.1 スモール
-      tipId: "seed-tip-01", // Premium Lip point 2BA 30本
-      level: "ADVANCED",
-      createdAt: new Date("2026-10-01T01:00:00.000Z"),
-    },
-    {
-      id: "sample-setting-03",
-      userId: SAMPLE_USER_IDS.misakichi,
-      title: "【サンプル】シャフト一体型フライトのセッティング",
-      description:
-        "サンプルとして登録しているセッティングです。シャフト一体型フライトを使うため、シャフトは選んでいません。",
-      image: { fileName: "sample-setting-03.jpeg", uuid: "22e2ca7a-1c8e-4333-8942-21bbc1b377a9" },
-      barrelId: "seed-barrel-04", // Mao ver.5 2BA 18g Cherry Red
-      shaftId: null,
-      flightId: "seed-flight-02", // GAME OVER K-FLEX スタンダード ブラック 26.0mm(一体型)
-      tipId: "seed-tip-05", // CRYO TIP 2BA 30本
-      level: "INTERMEDIATE",
-      createdAt: new Date("2026-10-01T02:00:00.000Z"),
-    },
-    {
-      id: "sample-setting-04",
-      userId: SAMPLE_USER_IDS.youchan,
-      title: "【サンプル】8FLIGHT でそろえたコスパ重視セッティング",
-      description:
-        "サンプルとして登録しているセッティングです。シャフトとフライトをエイト規格でそろえ、消耗品を手頃な価格に抑えた組み合わせ。",
-      image: { fileName: "sample-setting-04.jpeg", uuid: "7a095f98-c00c-4788-a0c8-7a08d55f66d8" },
-      barrelId: "seed-barrel-05", // Undisputed ROMERO Type4 2BA
-      shaftId: "seed-shaft-04", // 8FLIGHT シャフト レギュラー FIXED ホワイト 29.5mm
-      flightId: "seed-flight-04", // 8FLIGHT スリム
-      tipId: "seed-tip-04", // TIP ULTIMATE 2BA 40本
-      level: null,
-      createdAt: new Date("2026-10-01T03:00:00.000Z"),
-    },
-  ];
-
-  for (const { id, image, description, ...data } of settings) {
-    const imageKey = await uploadSampleImage(id, data.userId, image);
+  for (const { id, image, description, ...data } of sampleSettings) {
+    const imageKey = image ? await uploadSampleImage(id, data.userId, image) : null;
     await SettingService.upsert(id, {
       ...data,
-      description: `${description}${AI_IMAGE_NOTE}`,
+      description: buildSampleDescription({ description, image }),
       imageKey,
     });
   }

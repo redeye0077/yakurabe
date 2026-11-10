@@ -7,7 +7,8 @@ export default defineConfig({
   test: {
     environment: "node", // デフォルトはnode（Zodスキーマ・Service層用）
     setupFiles: ["./vitest.setup.ts"],
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // prisma/seed-data は Seed のデータの組み合わせを確かめるテスト
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "prisma/seed-data/**/*.test.ts"],
     testTimeout: 10000,
     server: {
       deps: {
