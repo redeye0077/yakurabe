@@ -24,6 +24,8 @@ import { getObjectStorage } from "@/server/storage/get-object-storage";
 vi.mock("@/server/repositories/setting.repository", () => ({
     SettingRepository: {
         findLatest: vi.fn(),
+        countForList: vi.fn(),
+        findPaged: vi.fn(),
         findByUserId: vi.fn(),
         findOwnerById: vi.fn(),
         findById: vi.fn(),
@@ -53,6 +55,8 @@ vi.mock("@/server/repositories/tip.repository", () => ({
 }));
 
 const mockedFindLatest = vi.mocked(SettingRepository.findLatest);
+const mockedCountForList = vi.mocked(SettingRepository.countForList);
+const mockedFindPaged = vi.mocked(SettingRepository.findPaged);
 const mockedFindByUserId = vi.mocked(SettingRepository.findByUserId);
 const mockedCreate = vi.mocked(SettingRepository.create);
 const mockedUpsert = vi.mocked(SettingRepository.upsert);
@@ -152,6 +156,85 @@ function createEditRecord(overrides: Partial<SettingEditRecord> = {}): SettingEd
 beforeEach(() => {
     vi.clearAllMocks();
     mockedGetObjectStorage.mockReturnValue(createStorage());
+});
+
+describe("SettingService.listPaged", () => {
+    beforeEach(() => {
+        mockedFindPaged.mockResolvedValue([]);
+    });
+
+    it("件数を数えてから、そのページの分を skip / take で取得し、一覧用の DTO と件数情報を返す", async () => {
+        mockedCountForList.mockResolvedValue(30);
+        mockedFindPaged.mockResolvedValue([createFoundSetting()]);
+
+        const result = await SettingService.listPaged({ page: 2, pageSize: 12 });
+
+        expect(mockedCountForList).toHaveBeenCalledWith({});
+        expect(mockedFindPaged).toHaveBeenCalledWith({}, { skip: 12, take: 12 });
+        expect(mockedCountForList.mock.invocationCallOrder[0]).toBeLessThan(
+            mockedFindPaged.mock.invocationCallOrder[0],
+        );
+        expect(result).toEqual({
+            items: [expect.objectContaining({ id: "setting-1", totalPrice: 17600 + 4180 + 1080 + 770 })],
+            total: 30,
+            page: 2,
+            pageSize: 12,
+            totalPages: 3,
+        });
+    });
+
+    it("1ページ目は skip 0 で取得する", async () => {
+        mockedCountForList.mockResolvedValue(30);
+
+        await SettingService.listPaged({ page: 1, pageSize: 12 });
+
+        expect(mockedFindPaged).toHaveBeenCalledWith({}, { skip: 0, take: 12 });
+    });
+
+    it("page が 1 未満なら 1 ページ目に補正する", async () => {
+        mockedCountForList.mockResolvedValue(30);
+
+        const result = await SettingService.listPaged({ page: 0, pageSize: 12 });
+
+        expect(result.page).toBe(1);
+        expect(mockedFindPaged).toHaveBeenCalledWith({}, { skip: 0, take: 12 });
+    });
+
+    it("page が最後のページより大きければ最後のページに補正する", async () => {
+        mockedCountForList.mockResolvedValue(30);
+
+        const result = await SettingService.listPaged({ page: 99, pageSize: 12 });
+
+        expect(result).toMatchObject({ page: 3, totalPages: 3 });
+        expect(mockedFindPaged).toHaveBeenCalledWith({}, { skip: 24, take: 12 });
+    });
+
+    it("非常に大きい page(Number.MAX_SAFE_INTEGER)も最後のページに補正する", async () => {
+        mockedCountForList.mockResolvedValue(30);
+
+        const result = await SettingService.listPaged({ page: Number.MAX_SAFE_INTEGER, pageSize: 12 });
+
+        expect(result.page).toBe(3);
+        expect(mockedFindPaged).toHaveBeenCalledWith({}, { skip: 24, take: 12 });
+    });
+
+    it("0件なら totalPages を 1 にし、page も 1 にする", async () => {
+        mockedCountForList.mockResolvedValue(0);
+
+        const result = await SettingService.listPaged({ page: 5, pageSize: 12 });
+
+        expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 12, totalPages: 1 });
+        expect(mockedFindPaged).toHaveBeenCalledWith({}, { skip: 0, take: 12 });
+    });
+
+    it("ちょうど割り切れる件数なら、余分な空のページを作らない", async () => {
+        mockedCountForList.mockResolvedValue(24);
+
+        const result = await SettingService.listPaged({ page: 3, pageSize: 12 });
+
+        expect(result).toMatchObject({ page: 2, totalPages: 2 });
+        expect(mockedFindPaged).toHaveBeenCalledWith({}, { skip: 12, take: 12 });
+    });
 });
 
 describe("SettingService.listLatest", () => {
