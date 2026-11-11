@@ -10,7 +10,12 @@ import { BarrelRepository } from "@/server/repositories/barrel.repository";
 import { ShaftRepository } from "@/server/repositories/shaft.repository";
 import { FlightRepository } from "@/server/repositories/flight.repository";
 import { TipRepository } from "@/server/repositories/tip.repository";
-import { SettingEditDto, SettingImageUploadDto, SettingListItemDto } from "@/server/dto/setting.dto";
+import {
+  SettingEditDto,
+  SettingImageUploadDto,
+  SettingListItemDto,
+  SettingListPageDto,
+} from "@/server/dto/setting.dto";
 import {
   SettingImageError,
   SettingNotFoundError,
@@ -166,6 +171,26 @@ export const SettingService = {
     const settings = await SettingRepository.findLatest(options.limit);
 
     return settings.map(toListItemDto);
+  },
+
+  /**
+   * /settings 用。件数を数えてから page を 1〜最後のページに補正し、そのページの分だけ新着順で返す。
+   * 0件のときは totalPages を 1 にし、page は 1 になる
+   */
+  async listPaged(options: { page: number; pageSize: number }): Promise<SettingListPageDto> {
+    const { pageSize } = options;
+    const filter = {};
+
+    const total = await SettingRepository.countForList(filter);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const page = Math.min(Math.max(options.page, 1), totalPages);
+
+    const settings = await SettingRepository.findPaged(filter, {
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+
+    return { items: settings.map(toListItemDto), total, page, pageSize, totalPages };
   },
 
   // マイページ用。指定したユーザーの投稿を新着順で全件返す
