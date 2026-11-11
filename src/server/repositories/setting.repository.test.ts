@@ -12,6 +12,7 @@ vi.mock("@/lib/prisma", () => ({
     prisma: {
         setting: {
             findMany: vi.fn(),
+            count: vi.fn(),
             findUnique: vi.fn(),
             create: vi.fn(),
             update: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 const mockedFindMany = vi.mocked(prisma.setting.findMany);
+const mockedCount = vi.mocked(prisma.setting.count);
 const mockedFindUnique = vi.mocked(prisma.setting.findUnique);
 const mockedCreate = vi.mocked(prisma.setting.create);
 const mockedUpdate = vi.mocked(prisma.setting.update);
@@ -67,6 +69,47 @@ describe("SettingRepository.findLatest", () => {
         await SettingRepository.findLatest();
 
         expect(mockedFindMany).toHaveBeenCalledWith({ ...expectedQuery, take: undefined });
+    });
+});
+
+describe("SettingRepository.countForList", () => {
+    it("条件なしの where で件数を数える", async () => {
+        mockedCount.mockResolvedValue(30);
+
+        const result = await SettingRepository.countForList({});
+
+        expect(mockedCount).toHaveBeenCalledWith({ where: {} });
+        expect(result).toBe(30);
+    });
+});
+
+describe("SettingRepository.findPaged", () => {
+    it("countForList と同じ where で、新着順(同時刻はid順)に skip / take を指定して取得する", async () => {
+        mockedFindMany.mockResolvedValue([]);
+        mockedCount.mockResolvedValue(0);
+
+        await SettingRepository.findPaged({}, { skip: 12, take: 12 });
+        await SettingRepository.countForList({});
+
+        expect(mockedFindMany).toHaveBeenCalledWith({
+            where: {},
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            skip: 12,
+            take: 12,
+            select: {
+                id: true,
+                title: true,
+                level: true,
+                imageKey: true,
+                createdAt: true,
+                user: { select: { username: true } },
+                barrel: { select: { name: true, weight: true, price: true } },
+                shaft: { select: { name: true, price: true } },
+                flight: { select: { name: true, price: true } },
+                tip: { select: { name: true, price: true } },
+            },
+        });
+        expect(mockedFindMany.mock.calls[0][0]?.where).toEqual(mockedCount.mock.calls[0][0]?.where);
     });
 });
 

@@ -16,6 +16,15 @@ export type SettingListItemDto = {
   createdAt: string; // ISO文字列
 };
 
+// /settings の1ページ分。page は Service で 1〜totalPages に補正した値。0件のとき totalPages は 1
+export type SettingListPageDto = {
+  items: SettingListItemDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
 // 編集フォームの初期値。投稿者は Service で確認済みのため含めない
 export type SettingEditDto = {
   title: string;

@@ -41,6 +41,15 @@ const settingListItemSelect = {
 
 export type SettingListItemRecord = Prisma.SettingGetPayload<{ select: typeof settingListItemSelect }>;
 
+// 一覧の絞り込み条件。今は条件なし。level・名前検索を足すときは、ここと buildSettingListWhere に追加する
+export type SettingListFilter = Record<string, never>;
+
+// 一覧の where を作る。件数(count)と取得(findMany)で同じ条件になるよう、ここだけで組み立てる
+function buildSettingListWhere(filter: SettingListFilter): Prisma.SettingWhereInput {
+  void filter;
+  return {};
+}
+
 // 編集フォームの初期値と、編集前の投稿者の確認に必要な項目
 const settingEditSelect = {
   userId: true,
@@ -100,6 +109,22 @@ export const SettingRepository = {
       // 投稿日時が同じでも表示順が揺れないよう、idで順序を確定させる
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take,
+      select: settingListItemSelect,
+    });
+  },
+
+  // /settings のページネーション用。条件に合う件数を返す
+  async countForList(filter: SettingListFilter): Promise<number> {
+    return prisma.setting.count({ where: buildSettingListWhere(filter) });
+  },
+
+  // /settings のページネーション用。条件に合うセッティングを新着順(同時刻は id 順)で skip 件飛ばして take 件返す
+  async findPaged(filter: SettingListFilter, paging: { skip: number; take: number }) {
+    return prisma.setting.findMany({
+      where: buildSettingListWhere(filter),
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip: paging.skip,
+      take: paging.take,
       select: settingListItemSelect,
     });
   },
