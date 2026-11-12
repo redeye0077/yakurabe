@@ -22,7 +22,6 @@ const { takkun, misakichi, youchan, ponzu, yuuto } = SAMPLE_USER_IDS;
 
 // 一覧が空にならないよう表示するサンプル(30件)。
 // - シャフトとフライトは規格(flightSystem)をそろえ、一体型フライトの場合はシャフトを null にする
-// - バレル02(DRAGOON4 No.5)はねじ規格が No.5 のため、チップも No.5 のチップ02だけを組み合わせる
 // - バレルの形状は 01〜03 がストレート、04・05 がトルピード
 // - 検索の確認用に「ストレート」「トルピード」「グリップ」「朝練」はタイトルにだけ書き、説明文には書かない
 // - 使用感は主観的な感想にとどめ、商品のスペックの数値は書かない
@@ -90,10 +89,10 @@ export const sampleSettings: SampleSetting[] = [
     description:
       "ショップで勧められて最初に買った一本です。癖が少なく、どこを持っても投げやすいので、フォームを作る段階の自分には合っていました。",
     image: { fileName: "sample-setting-05.jpeg", uuid: "c24a1d0a-fcea-493d-a324-15e2c7e69fa9" },
-    barrelId: "seed-barrel-02", // ASTRA DARTS DRAGOON4 No.5
+    barrelId: "seed-barrel-02", // ASTRA DARTS DRAGOON4 2BA
     shaftId: "seed-shaft-03", // PRO GRIP SHAFT ブラック 19.5mm
     flightId: "seed-flight-01", // L-Flight PRO DYNASTY Sachika ver.1 スモール
-    tipId: "seed-tip-02", // Premium Lip point No.5 30本
+    tipId: "seed-tip-02", // Short Lippoint 2BA 50本
     level: "BEGINNER",
     createdAt: new Date("2026-09-30T19:20:00+09:00"),
   },
@@ -160,10 +159,10 @@ export const sampleSettings: SampleSetting[] = [
     description:
       "すっと前に出ていく軽い飛びが好みで組んだセッティングです。エイトのシャフトとフライトは交換しやすく、気軽に試せます。",
     image: null,
-    barrelId: "seed-barrel-02", // ASTRA DARTS DRAGOON4 No.5
+    barrelId: "seed-barrel-02", // ASTRA DARTS DRAGOON4 2BA
     shaftId: "seed-shaft-04", // 8FLIGHT シャフト レギュラー FIXED ホワイト 29.5mm
     flightId: "seed-flight-04", // 8FLIGHT スリム
-    tipId: "seed-tip-02", // Premium Lip point No.5 30本
+    tipId: "seed-tip-02", // Short Lippoint 2BA 50本
     level: null,
     createdAt: new Date("2026-10-05T20:50:00+09:00"),
   },
@@ -230,10 +229,10 @@ export const sampleSettings: SampleSetting[] = [
     description:
       "いくつものバレルを投げ比べて、最後まで残ったのがこれでした。手になじむ感覚があり、狙ったところへ迷わず投げられます。",
     image: { fileName: "sample-setting-15.jpeg", uuid: "88a87678-7440-4ca3-b931-62cc773bc1c3" },
-    barrelId: "seed-barrel-02", // ASTRA DARTS DRAGOON4 No.5
+    barrelId: "seed-barrel-02", // ASTRA DARTS DRAGOON4 2BA
     shaftId: "seed-shaft-05", // Fit Shaft GEAR ハイブリッド ロック クリア 24.0mm
     flightId: "seed-flight-03", // Fit Flight AIR × Ami Komiyama ver.4
-    tipId: "seed-tip-02", // Premium Lip point No.5 30本
+    tipId: "seed-tip-02", // Short Lippoint 2BA 50本
     level: "ADVANCED",
     createdAt: new Date("2026-10-10T23:20:00+09:00"),
   },
@@ -300,10 +299,10 @@ export const sampleSettings: SampleSetting[] = [
     description:
       "狙いを細かく絞りたいときに使っています。癖のない形なので、自分の投げ方がそのまま矢に出る感覚があります。",
     image: { fileName: "sample-setting-20.jpeg", uuid: "237d1952-87eb-498b-ba16-3c26c156416b" },
-    barrelId: "seed-barrel-02", // ASTRA DARTS DRAGOON4 No.5
+    barrelId: "seed-barrel-02", // ASTRA DARTS DRAGOON4 2BA
     shaftId: "seed-shaft-02", // Fit Shaft COLOR Carbon ノーマル スピン 24.0mm
     flightId: "seed-flight-03", // Fit Flight AIR × Ami Komiyama ver.4
-    tipId: "seed-tip-02", // Premium Lip point No.5 30本
+    tipId: "seed-tip-02", // Short Lippoint 2BA 50本
     level: "ADVANCED",
     createdAt: new Date("2026-10-15T21:00:00+09:00"),
   },
@@ -370,10 +369,10 @@ export const sampleSettings: SampleSetting[] = [
     description:
       "シャフト一体型フライトで、組み立てに迷わず気軽に投げられます。フライトの交換がシャフトごとで済むのも楽です。",
     image: null,
-    barrelId: "seed-barrel-02", // ASTRA DARTS DRAGOON4 No.5
+    barrelId: "seed-barrel-02", // ASTRA DARTS DRAGOON4 2BA
     shaftId: null,
     flightId: "seed-flight-02", // GAME OVER K-FLEX スタンダード ブラック 26.0mm(一体型)
-    tipId: "seed-tip-02", // Premium Lip point No.5 30本
+    tipId: "seed-tip-02", // Short Lippoint 2BA 50本
     level: null,
     createdAt: new Date("2026-10-20T20:10:00+09:00"),
   },
@@ -440,10 +439,10 @@ export const sampleSettings: SampleSetting[] = [
     description:
       "気分を変えたいときに使う控えのセッティングです。いつもと違う感触で投げると、フォームの崩れに気づけることがあります。",
     image: { fileName: "sample-setting-30.jpeg", uuid: "86976a73-5f61-4192-b27b-462a52832da4" },
-    barrelId: "seed-barrel-02", // ASTRA DARTS DRAGOON4 No.5
+    barrelId: "seed-barrel-02", // ASTRA DARTS DRAGOON4 2BA
     shaftId: "seed-shaft-02", // Fit Shaft COLOR Carbon ノーマル スピン 24.0mm
     flightId: "seed-flight-05", // Fit Flight AIR × 鎌田恋 ver.2 ティアドロップ クリア
-    tipId: "seed-tip-02", // Premium Lip point No.5 30本
+    tipId: "seed-tip-02", // Short Lippoint 2BA 50本
     level: null,
     createdAt: new Date("2026-10-25T21:05:00+09:00"),
   },
