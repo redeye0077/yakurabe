@@ -2,17 +2,17 @@ import { describe, expect, it } from "vitest";
 import { buildSampleDescription, sampleSettings } from "./sample-settings";
 
 // prisma/seed.ts の商品マスタから、組み合わせの判定に使う規格だけを書き写したもの(商品を変えたらここも合わせる)。
-// バレルはスキーマにねじ規格を持たないため、商品名の表記(2BA / No.5)から入れている
+// バレルはスキーマにねじ規格を持たず、すべて 2BA とみなす(ソフトバレルの約95%が 2BA のため)
 const BARREL_THREAD: Record<string, "TWO_BA" | "NO_5"> = {
   "seed-barrel-01": "TWO_BA",
-  "seed-barrel-02": "NO_5",
+  "seed-barrel-02": "TWO_BA",
   "seed-barrel-03": "TWO_BA",
   "seed-barrel-04": "TWO_BA",
   "seed-barrel-05": "TWO_BA",
 };
 const TIP_THREAD: Record<string, "TWO_BA" | "NO_5"> = {
   "seed-tip-01": "TWO_BA",
-  "seed-tip-02": "NO_5",
+  "seed-tip-02": "TWO_BA",
   "seed-tip-03": "TWO_BA",
   "seed-tip-04": "TWO_BA",
   "seed-tip-05": "TWO_BA",
