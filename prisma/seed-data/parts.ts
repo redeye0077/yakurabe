@@ -123,7 +123,7 @@ export const seedShafts: WithId<CreateShaftInput>[] = [
   {
     id: "seed-shaft-04",
     name: "8FLIGHT シャフト レギュラー FIXED ホワイト 29.5mm",
-    maker: "TARGET",
+    maker: "8FLIGHT",
     price: 770,
     imageUrl: "https://example.com/images/8flight-shaft-regular-fixed-white-295.png",
     hiveUrl: "https://www.dartshive.jp/shopdetail/000000017336/",
@@ -187,7 +187,7 @@ export const seedFlights: WithId<CreateFlightInput>[] = [
   {
     id: "seed-flight-04",
     name: "8FLIGHT スリム",
-    maker: "TARGET",
+    maker: "8FLIGHT",
     price: 660,
     imageUrl: "https://example.com/images/8flight-slim.png",
     hiveUrl: "https://www.dartshive.jp/shopdetail/000000019733/",
