@@ -8,7 +8,7 @@ export type TipThreadSize = z.infer<typeof tipThreadSizeSchema>;
 export const createTipSchema = z.object({
   name: z.string().min(1),
   maker: z.string().min(1),
-  price: z.number().int().nonnegative(),
+  price: z.number().int().positive(),
   imageUrl: z.string().min(1),
   hiveUrl: z.string().optional(),
   // ねじ規格のみを表す。形状・長さは商品名で区別する
