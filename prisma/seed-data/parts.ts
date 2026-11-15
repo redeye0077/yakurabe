@@ -2,7 +2,7 @@
  * Seed で投入する商品マスタ(バレル/シャフト/フライト/チップ)。商品マスタはこのファイルが唯一の正。
  * 変更はここを直して Seed を再実行する(Prisma Studioでの手修正は上書きされる)
  *
- * 価格は2026年10月時点のダーツハイブの価格。スペックも同サイトの商品ページの値(URLは hiveUrl)
+ * 価格はダーツハイブの通常価格(01〜05 は2026年10月時点、それ以降は2026年11月時点)。スペックも同サイトの商品ページの値(URLは hiveUrl)
  * 画像は未用意のため imageUrl はダミー
  *
  * prisma/seed.ts が投入に、sample-settings.test.ts が組み合わせの確認に使う
@@ -17,6 +17,7 @@ export type WithId<T> = T & { id: string };
 
 export const seedBarrels: WithId<CreateBarrelInput>[] = [
   {
+    // 形状: ストレート
     id: "seed-barrel-01",
     name: "DISCOVERY LABEL Jeff Smith 2BA",
     maker: "COSMO DARTS",
@@ -29,6 +30,7 @@ export const seedBarrels: WithId<CreateBarrelInput>[] = [
     material: "タングステン90%",
   },
   {
+    // 形状: ストレート
     id: "seed-barrel-02",
     name: "ASTRA DARTS DRAGOON4 2BA",
     maker: "DYNASTY",
@@ -41,6 +43,7 @@ export const seedBarrels: WithId<CreateBarrelInput>[] = [
     material: "タングステン90%",
   },
   {
+    // 形状: ストレート
     id: "seed-barrel-03",
     name: "KATANA Houju 2BA",
     maker: "DYNASTY",
@@ -53,6 +56,7 @@ export const seedBarrels: WithId<CreateBarrelInput>[] = [
     material: "タングステン90%",
   },
   {
+    // 形状: トルピード
     id: "seed-barrel-04",
     name: "Mao ver.5 2BA 18g Cherry Red",
     maker: "One80",
@@ -65,6 +69,7 @@ export const seedBarrels: WithId<CreateBarrelInput>[] = [
     material: "タングステン90%",
   },
   {
+    // 形状: トルピード
     id: "seed-barrel-05",
     name: "Undisputed ROMERO Type4 2BA",
     maker: "TRiNiDAD",
@@ -74,6 +79,110 @@ export const seedBarrels: WithId<CreateBarrelInput>[] = [
     weight: 17.5,
     totalLength: 45,
     maxDiameter: 7.2,
+    material: "タングステン90%",
+  },
+  {
+    // 形状: ストレート
+    id: "seed-barrel-06",
+    name: "ZONE BRASS mHz-2 2BA グリーン",
+    maker: "D.CRAFT",
+    price: 1980,
+    imageUrl: "https://example.com/images/zone-brass-mhz-2-2ba-green.png",
+    hiveUrl: "https://www.dartshive.jp/view/item/000000040649",
+    weight: 16.5,
+    totalLength: 54,
+    maxDiameter: 8,
+    material: "ブラス",
+  },
+  {
+    // 形状: ストレート
+    id: "seed-barrel-07",
+    name: "Raise Bシリーズ GR 2BA",
+    maker: "One80",
+    price: 8800,
+    imageUrl: "https://example.com/images/raise-b-series-gr-2ba.png",
+    hiveUrl: "https://www.dartshive.jp/view/item/000000028955",
+    weight: 18.5,
+    totalLength: 45,
+    maxDiameter: 6.8,
+    material: "タングステン80%",
+  },
+  {
+    // 形状: ストレート
+    id: "seed-barrel-08",
+    name: "SIRIUS G4 21g JAPAN 2025 CONSTRUCTORS CHAMPION 2BA 林雄太選手モデル",
+    maker: "TARGET",
+    price: 29800,
+    imageUrl: "https://example.com/images/sirius-g4-21g-japan-2025-constructors-champion-2ba.png",
+    hiveUrl: "https://www.dartshive.jp/view/item/000000055884",
+    weight: 21,
+    totalLength: 51,
+    maxDiameter: 6.7,
+    material: "タングステン90%",
+  },
+  {
+    // 形状: ストレート
+    id: "seed-barrel-09",
+    name: "ENDEAVOUR G3 2BA 佐藤かす美選手モデル",
+    maker: "TARGET",
+    price: 22800,
+    imageUrl: "https://example.com/images/endeavour-g3-2ba.png",
+    hiveUrl: "https://www.dartshive.jp/view/item/000000055879",
+    weight: 19,
+    totalLength: 42,
+    maxDiameter: 7.2,
+    material: "タングステン90%",
+  },
+  {
+    // 形状: トルピード
+    id: "seed-barrel-10",
+    name: "A-FLOW SILVER LINE EARTH TURQUOISE 2BA",
+    maker: "DYNASTY",
+    price: 8479,
+    imageUrl: "https://example.com/images/a-flow-silver-line-earth-turquoise-2ba.png",
+    hiveUrl: "https://www.dartshive.jp/view/item/000000001361",
+    weight: 16,
+    totalLength: 34,
+    maxDiameter: 7.8,
+    material: "タングステン80%",
+  },
+  {
+    // 形状: トルピード
+    id: "seed-barrel-11",
+    name: "A-FLOW OBSIDIAN LINE Coral 2BA 21g 阿嘉紗香選手モデル",
+    maker: "DYNASTY",
+    price: 22800,
+    imageUrl: "https://example.com/images/a-flow-obsidian-line-coral-2ba-21g.png",
+    hiveUrl: "https://www.dartshive.jp/view/item/000000056245",
+    weight: 21,
+    totalLength: 42,
+    maxDiameter: 7.2,
+    material: "タングステン95%",
+  },
+  {
+    // 形状: 砲弾
+    id: "seed-barrel-12",
+    name: "TRIPLEIGHT TRUE BLUE2 2BA 鈴木さつき選手モデル",
+    maker: "DYNASTY",
+    price: 14800,
+    imageUrl: "https://example.com/images/tripleight-true-blue2-2ba.png",
+    hiveUrl: "https://www.dartshive.jp/view/item/000000053241",
+    weight: 18,
+    totalLength: 41,
+    maxDiameter: 7.8,
+    material: "タングステン90%",
+  },
+  {
+    // 形状: くぼみ(持ち手が丸くくぼんでいて持ちやすい)
+    id: "seed-barrel-13",
+    name: "UNITE SHRIKE 2BA",
+    maker: "DMC",
+    price: 11880,
+    imageUrl: "https://example.com/images/unite-shrike-2ba.png",
+    hiveUrl: "https://www.dartshive.jp/view/item/000000020995",
+    weight: 18,
+    totalLength: 38,
+    maxDiameter: 7.9,
     material: "タングステン90%",
   },
 ];
@@ -205,6 +314,50 @@ export const seedFlights: WithId<CreateFlightInput>[] = [
     flightType: "MOLDED",
     flightShape: "ティアドロップ",
     flightSystem: "FIT",
+  },
+  {
+    id: "seed-flight-06",
+    name: "L-Flight EZ ディンプル Xiaochen Zong ver.3 スタンダード MIX",
+    maker: "L-style",
+    price: 990,
+    imageUrl: "https://example.com/images/l-flight-ez-dimple-xiaochen-zong-ver3-standard-mix.png",
+    hiveUrl: "https://www.dartshive.jp/view/item/000000056608",
+    flightType: "MOLDED",
+    flightShape: "スタンダード",
+    flightSystem: "UNIVERSAL",
+  },
+  {
+    id: "seed-flight-07",
+    name: "MIRARCH×L-Flight PRO MAIKA MORIMOTO ver.1 シェイプ ディープパープル",
+    maker: "L-style",
+    price: 990,
+    imageUrl: "https://example.com/images/mirarch-l-flight-pro-maika-morimoto-ver1-shape-deep-purple.png",
+    hiveUrl: "https://www.dartshive.jp/view/item/000000059193",
+    flightType: "MOLDED",
+    flightShape: "シェイプ",
+    flightSystem: "UNIVERSAL",
+  },
+  {
+    id: "seed-flight-08",
+    name: "Fit Flight AIR スタンダード グリーン 無地",
+    maker: "COSMO DARTS",
+    price: 860,
+    imageUrl: "https://example.com/images/fit-flight-air-standard-green.png",
+    hiveUrl: "https://www.dartshive.jp/view/item/000000012306",
+    flightType: "MOLDED",
+    flightShape: "スタンダード",
+    flightSystem: "FIT",
+  },
+  {
+    id: "seed-flight-09",
+    name: "K-FLEX JAPAN LIMITED EDITION 2026 シェイプ ブルー 26.0mm",
+    maker: "TARGET",
+    price: 1580,
+    imageUrl: "https://example.com/images/k-flex-japan-limited-edition-2026-shape-blue-260.png",
+    hiveUrl: "https://www.dartshive.jp/view/item/000000057292",
+    flightType: "SHAFT_INTEGRATED",
+    shaftLength: "26.0mm",
+    flightShape: "シェイプ",
   },
 ];
 
