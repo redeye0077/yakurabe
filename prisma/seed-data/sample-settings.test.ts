@@ -1,37 +1,18 @@
 import { describe, expect, it } from "vitest";
+import type { TipThreadSize } from "@/schemas/tip";
+import { seedBarrels, seedFlights, seedShafts, seedTips } from "./parts";
 import { buildSampleDescription, sampleSettings } from "./sample-settings";
 
-// prisma/seed.ts の商品マスタから、組み合わせの判定に使う規格だけを書き写したもの(商品を変えたらここも合わせる)。
+// 組み合わせの判定に使う規格だけを、商品マスタ(parts.ts)の配列から id → 規格 のマップにしたもの
+const toMap = <T extends { id: string }, V>(items: T[], pick: (item: T) => V): Record<string, V> =>
+  Object.fromEntries(items.map((item) => [item.id, pick(item)]));
+
 // バレルはスキーマにねじ規格を持たず、すべて 2BA とみなす(ソフトバレルの約95%が 2BA のため)
-const BARREL_THREAD: Record<string, "TWO_BA" | "NO_5"> = {
-  "seed-barrel-01": "TWO_BA",
-  "seed-barrel-02": "TWO_BA",
-  "seed-barrel-03": "TWO_BA",
-  "seed-barrel-04": "TWO_BA",
-  "seed-barrel-05": "TWO_BA",
-};
-const TIP_THREAD: Record<string, "TWO_BA" | "NO_5"> = {
-  "seed-tip-01": "TWO_BA",
-  "seed-tip-02": "TWO_BA",
-  "seed-tip-03": "TWO_BA",
-  "seed-tip-04": "TWO_BA",
-  "seed-tip-05": "TWO_BA",
-};
-const SHAFT_SYSTEM: Record<string, string> = {
-  "seed-shaft-01": "UNIVERSAL",
-  "seed-shaft-02": "FIT",
-  "seed-shaft-03": "UNIVERSAL",
-  "seed-shaft-04": "EIGHT",
-  "seed-shaft-05": "FIT",
-};
-// null はシャフト一体型(規格を持たない)
-const FLIGHT_SYSTEM: Record<string, string | null> = {
-  "seed-flight-01": "UNIVERSAL",
-  "seed-flight-02": null,
-  "seed-flight-03": "FIT",
-  "seed-flight-04": "EIGHT",
-  "seed-flight-05": "FIT",
-};
+const BARREL_THREAD = toMap(seedBarrels, (): TipThreadSize => "TWO_BA");
+const TIP_THREAD = toMap(seedTips, (t) => t.threadSize);
+const SHAFT_SYSTEM = toMap(seedShafts, (s) => s.flightSystem);
+// null はシャフト一体型(規格を持たない)。成型で規格が抜けていれば undefined になり、テストで落ちる
+const FLIGHT_SYSTEM = toMap(seedFlights, (f) => (f.flightType === "SHAFT_INTEGRATED" ? null : f.flightSystem));
 
 describe("サンプルセッティングの Seed データ", () => {
   it("id・画像の UUID・画像ファイル名が重複しない", () => {
