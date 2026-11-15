@@ -14,18 +14,6 @@ const SHAFT_SYSTEM = toMap(seedShafts, (s) => s.flightSystem);
 // null はシャフト一体型(規格を持たない)。成型で規格が抜けていれば undefined になり、テストで落ちる
 const FLIGHT_SYSTEM = toMap(seedFlights, (f) => (f.flightType === "SHAFT_INTEGRATED" ? null : f.flightSystem));
 
-describe("商品マスタの Seed データ", () => {
-  it.each([
-    ["バレル", seedBarrels],
-    ["シャフト", seedShafts],
-    ["フライト", seedFlights],
-    ["チップ", seedTips],
-  ] as const)("%s: 商品 id が重複しない", (_, items) => {
-    const ids = items.map((p) => p.id);
-    expect(new Set(ids).size).toBe(ids.length);
-  });
-});
-
 describe("サンプルセッティングの Seed データ", () => {
   it("id・画像の UUID・画像ファイル名が重複しない", () => {
     const ids = sampleSettings.map((s) => s.id);

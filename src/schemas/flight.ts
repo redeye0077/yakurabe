@@ -9,7 +9,7 @@ export type FlightType = z.infer<typeof flightTypeSchema>;
 export const createFlightSchema = z.object({
   name: z.string().min(1),
   maker: z.string().min(1),
-  price: z.number().int().nonnegative(),
+  price: z.number().int().positive(),
   imageUrl: z.string().min(1),
   hiveUrl: z.string().optional(),
   flightType: flightTypeSchema,
