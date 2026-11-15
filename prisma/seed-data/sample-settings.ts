@@ -20,7 +20,7 @@ export function buildSampleDescription({ description, image }: Pick<SampleSettin
 
 const { takkun, misakichi, youchan, ponzu, yuuto } = SAMPLE_USER_IDS;
 
-// 一覧が空にならないよう表示するサンプル(30件)。
+// 一覧が空にならないよう表示するサンプル(60件)。
 // - シャフトとフライトは規格(flightSystem)をそろえ、一体型フライトの場合はシャフトを null にする
 // - バレルの形状は parts.ts の各バレルのコメントを参照
 // - 検索の確認用に「ストレート」「トルピード」「グリップ」「朝練」はタイトルにだけ書き、説明文には書かない
@@ -445,5 +445,425 @@ export const sampleSettings: SampleSetting[] = [
     tipId: "seed-tip-02", // Short Lippoint 2BA 50本
     level: null,
     createdAt: new Date("2026-10-25T21:05:00+09:00"),
+  },
+  {
+    id: "sample-setting-31",
+    userId: takkun,
+    title: "【サンプル】砲弾型で前に重さを感じるセッティング",
+    description:
+      "前のほうに重さがまとまっている砲弾型で、軽く投げても矢が前に進んでいく感覚があります。フィット規格のスピンシャフトとティアドロップのフライトで、飛びも安定しています。",
+    image: null,
+    barrelId: "seed-barrel-12", // TRIPLEIGHT TRUE BLUE2 2BA 鈴木さつき選手モデル
+    shaftId: "seed-shaft-02", // Fit Shaft COLOR Carbon ノーマル スピン 24.0mm
+    flightId: "seed-flight-05", // Fit Flight AIR × 鎌田恋 ver.2 ティアドロップ クリア
+    tipId: "seed-tip-05", // CRYO TIP 2BA 30本
+    level: "INTERMEDIATE",
+    createdAt: new Date("2026-08-27T20:00:00+09:00"),
+  },
+  {
+    id: "sample-setting-32",
+    userId: misakichi,
+    title: "【サンプル】ブラスバレルで気軽に始める練習用",
+    description:
+      "始めたばかりなので、まずは手頃なブラスのバレルを選びました。シャフト一体型のフライトなので、組み合わせに迷わず投げ始められます。",
+    image: { fileName: "sample-setting-32.jpeg", uuid: "ef125750-93ca-4f06-a73d-19c61f3fad4d" },
+    barrelId: "seed-barrel-06", // ZONE BRASS mHz-2 2BA グリーン
+    shaftId: null,
+    flightId: "seed-flight-02", // GAME OVER K-FLEX スタンダード ブラック 26.0mm(一体型)
+    tipId: "seed-tip-01", // Premium Lip point 2BA 30本
+    level: "BEGINNER",
+    createdAt: new Date("2026-08-28T21:15:00+09:00"),
+  },
+  {
+    id: "sample-setting-33",
+    userId: youchan,
+    title: "【サンプル】くぼみに指が収まるグリップ重視の一本",
+    description:
+      "持つところが丸くくぼんでいて、指を置く位置が自然と決まります。ずっと持ち方に迷っていましたが、これに替えてから投げるたびの感覚がそろってきました。",
+    image: { fileName: "sample-setting-33.jpeg", uuid: "ab277ee0-f58e-4af7-a2e6-ea9471701961" },
+    barrelId: "seed-barrel-13", // UNITE SHRIKE 2BA
+    shaftId: "seed-shaft-03", // PRO GRIP SHAFT ブラック 19.5mm
+    flightId: "seed-flight-07", // MIRARCH×L-Flight PRO MAIKA MORIMOTO ver.1 シェイプ ディープパープル
+    tipId: "seed-tip-04", // TIP ULTIMATE 2BA 40本
+    level: "INTERMEDIATE",
+    createdAt: new Date("2026-08-29T12:40:00+09:00"),
+  },
+  {
+    id: "sample-setting-34",
+    userId: ponzu,
+    title: "【サンプル】一体型のシェイプフライトを試すセッティング",
+    description:
+      "一体型フライトのシェイプ形状が気になって組んでみました。いつものセッティングと投げ比べると、飛び方の違いがよくわかっておもしろいです。",
+    image: null,
+    barrelId: "seed-barrel-04", // Mao ver.5 2BA 18g Cherry Red
+    shaftId: null,
+    flightId: "seed-flight-09", // K-FLEX JAPAN LIMITED EDITION 2026 シェイプ ブルー 26.0mm(一体型)
+    tipId: "seed-tip-03", // FIT POINT PLUS 2.0 2BA 60本
+    level: null,
+    createdAt: new Date("2026-08-30T22:10:00+09:00"),
+  },
+  {
+    id: "sample-setting-35",
+    userId: yuuto,
+    title: "【サンプル】トルピードで狙いを一点に絞る",
+    description:
+      "手元に重さがまとまっていて、狙う一点に意識を集めやすいです。フィット規格のシャフトとフライトでそろえたので、飛びのばらつきも少なく感じます。",
+    image: { fileName: "sample-setting-35.jpeg", uuid: "ec58ce8a-1a4e-4755-80fe-873eb792aa91" },
+    barrelId: "seed-barrel-05", // Undisputed ROMERO Type4 2BA
+    shaftId: "seed-shaft-05", // Fit Shaft GEAR ハイブリッド ロック クリア 24.0mm
+    flightId: "seed-flight-03", // Fit Flight AIR × Ami Komiyama ver.4
+    tipId: "seed-tip-05", // CRYO TIP 2BA 30本
+    level: "INTERMEDIATE",
+    createdAt: new Date("2026-08-31T19:30:00+09:00"),
+  },
+  {
+    id: "sample-setting-36",
+    userId: youchan,
+    title: "【サンプル】汎用規格でまとめた練習用セッティング",
+    description:
+      "練習用に、手に入れやすい汎用規格のシャフトとフライトでまとめました。小さめのフライトで矢が詰まっても入りやすく、同じところを続けて狙う練習に向いています。",
+    image: { fileName: "sample-setting-36.jpeg", uuid: "d8f17de3-7d66-4afd-96f7-dc1ce5aeb589" },
+    barrelId: "seed-barrel-01", // DISCOVERY LABEL Jeff Smith 2BA
+    shaftId: "seed-shaft-03", // PRO GRIP SHAFT ブラック 19.5mm
+    flightId: "seed-flight-01", // L-Flight PRO DYNASTY Sachika ver.1 スモール
+    tipId: "seed-tip-04", // TIP ULTIMATE 2BA 40本
+    level: "INTERMEDIATE",
+    createdAt: new Date("2026-09-01T13:05:00+09:00"),
+  },
+  {
+    id: "sample-setting-37",
+    userId: yuuto,
+    title: "【サンプル】短めのバレルを投げ比べ中のセッティング",
+    description:
+      "短めのバレルを試したくて組んだセッティングです。L-style のシャフトとフライトでそろえたので、バレルの違いだけを比べやすいです。",
+    image: { fileName: "sample-setting-37.jpeg", uuid: "d4cb3f90-c7e8-47c6-bb99-2857b2b4e9ee" },
+    barrelId: "seed-barrel-09", // ENDEAVOUR G3 2BA 佐藤かす美選手モデル
+    shaftId: "seed-shaft-01", // L-SHaft Carbon ロック スリム 37.0mm
+    flightId: "seed-flight-06", // L-Flight EZ ディンプル Xiaochen Zong ver.3 スタンダード MIX
+    tipId: "seed-tip-02", // Short Lippoint 2BA 50本
+    level: null,
+    createdAt: new Date("2026-09-02T21:45:00+09:00"),
+  },
+  {
+    id: "sample-setting-38",
+    userId: takkun,
+    title: "【サンプル】トルピードとスリムフライトで攻める構成",
+    description:
+      "重めのバレルにスリムのフライトを合わせ、矢速を落とさずに攻められるようにしました。エイトのシャフトとフライトにしてから、試合中にフライトが外れて慌てることがなくなりました。",
+    image: { fileName: "sample-setting-38.jpeg", uuid: "fbd6e870-43ad-471d-bfe0-5dd648907549" },
+    barrelId: "seed-barrel-11", // A-FLOW OBSIDIAN LINE Coral 2BA 21g 阿嘉紗香選手モデル
+    shaftId: "seed-shaft-04", // 8FLIGHT シャフト レギュラー FIXED ホワイト 29.5mm
+    flightId: "seed-flight-04", // 8FLIGHT スリム
+    tipId: "seed-tip-05", // CRYO TIP 2BA 30本
+    level: "ADVANCED",
+    createdAt: new Date("2026-09-03T20:20:00+09:00"),
+  },
+  {
+    id: "sample-setting-39",
+    userId: misakichi,
+    title: "【サンプル】スタンダードフライトで飛びを落ち着かせる",
+    description:
+      "フライトを大きめのスタンダード形状にして、飛びを落ち着かせた組み合わせです。汎用規格のシャフトは手に入れやすく、折れてもすぐ買い直せます。",
+    image: { fileName: "sample-setting-39.jpeg", uuid: "020c83c9-95e6-4690-9763-492da3fe6713" },
+    barrelId: "seed-barrel-02", // ASTRA DARTS DRAGOON4 2BA
+    shaftId: "seed-shaft-03", // PRO GRIP SHAFT ブラック 19.5mm
+    flightId: "seed-flight-06", // L-Flight EZ ディンプル Xiaochen Zong ver.3 スタンダード MIX
+    tipId: "seed-tip-04", // TIP ULTIMATE 2BA 40本
+    level: "INTERMEDIATE",
+    createdAt: new Date("2026-09-04T12:15:00+09:00"),
+  },
+  {
+    id: "sample-setting-40",
+    userId: ponzu,
+    title: "【サンプル】手頃な価格で選んだ二本目のバレル",
+    description:
+      "最初の一本に慣れてきたので、手頃なものから二本目を選びました。一本目とは持ったときの感触が違い、投げ比べるのを楽しんでいます。",
+    image: { fileName: "sample-setting-40.jpeg", uuid: "3d114b04-517e-4566-a4d5-8a7c4f61a1b3" },
+    barrelId: "seed-barrel-07", // Raise Bシリーズ GR 2BA
+    shaftId: "seed-shaft-03", // PRO GRIP SHAFT ブラック 19.5mm
+    flightId: "seed-flight-01", // L-Flight PRO DYNASTY Sachika ver.1 スモール
+    tipId: "seed-tip-01", // Premium Lip point 2BA 30本
+    level: "BEGINNER",
+    createdAt: new Date("2026-09-05T22:30:00+09:00"),
+  },
+  {
+    id: "sample-setting-41",
+    userId: misakichi,
+    title: "【サンプル】フィット規格でシャフト長を詰めた試合用",
+    description:
+      "試合用に、シャフトの長さを少しずつ替えて合うところを探しました。フィット規格に替えてからは、投げるたびの飛びの差が小さくなったと感じます。",
+    image: { fileName: "sample-setting-41.jpeg", uuid: "225298d4-dced-4b4c-85e8-4872e67297a6" },
+    barrelId: "seed-barrel-05", // Undisputed ROMERO Type4 2BA
+    shaftId: "seed-shaft-05", // Fit Shaft GEAR ハイブリッド ロック クリア 24.0mm
+    flightId: "seed-flight-08", // Fit Flight AIR スタンダード グリーン 無地
+    tipId: "seed-tip-03", // FIT POINT PLUS 2.0 2BA 60本
+    level: "ADVANCED",
+    createdAt: new Date("2026-09-06T19:50:00+09:00"),
+  },
+  {
+    id: "sample-setting-42",
+    userId: ponzu,
+    title: "【サンプル】仕事帰りの練習に使う普段使いセッティング",
+    description:
+      "仕事帰りに少しだけ投げるときの普段使いです。細身のシャフトとスタンダードのフライトで、疲れていても素直に飛んでくれます。",
+    image: null,
+    barrelId: "seed-barrel-03", // KATANA Houju 2BA
+    shaftId: "seed-shaft-01", // L-SHaft Carbon ロック スリム 37.0mm
+    flightId: "seed-flight-06", // L-Flight EZ ディンプル Xiaochen Zong ver.3 スタンダード MIX
+    tipId: "seed-tip-05", // CRYO TIP 2BA 30本
+    level: "INTERMEDIATE",
+    createdAt: new Date("2026-09-07T13:35:00+09:00"),
+  },
+  {
+    id: "sample-setting-43",
+    userId: yuuto,
+    title: "【サンプル】重めのバレルに一体型フライトを合わせた構成",
+    description:
+      "重めのバレルで、狙いを細かく絞りたいときに使っています。一体型フライトにしてから、シャフトの緩みを気にせず狙いに集中できるようになりました。",
+    image: { fileName: "sample-setting-43.jpeg", uuid: "5cb4c2fd-9bb6-4c1e-85fd-d1b90419b494" },
+    barrelId: "seed-barrel-08", // SIRIUS G4 21g JAPAN 2025 CONSTRUCTORS CHAMPION 2BA 林雄太選手モデル
+    shaftId: null,
+    flightId: "seed-flight-02", // GAME OVER K-FLEX スタンダード ブラック 26.0mm(一体型)
+    tipId: "seed-tip-02", // Short Lippoint 2BA 50本
+    level: "ADVANCED",
+    createdAt: new Date("2026-09-08T21:05:00+09:00"),
+  },
+  {
+    id: "sample-setting-44",
+    userId: takkun,
+    title: "【サンプル】丸いくぼみで持ちやすいグリップ感",
+    description:
+      "すべりにくく、指が毎回同じ位置に収まるので安心して投げられます。肩の力を抜いても狙いがぶれにくく、長く投げていても疲れにくいです。",
+    image: { fileName: "sample-setting-44.jpeg", uuid: "b8cede09-f6b1-417d-9efe-c9b2ecb96c86" },
+    barrelId: "seed-barrel-13", // UNITE SHRIKE 2BA
+    shaftId: "seed-shaft-01", // L-SHaft Carbon ロック スリム 37.0mm
+    flightId: "seed-flight-06", // L-Flight EZ ディンプル Xiaochen Zong ver.3 スタンダード MIX
+    tipId: "seed-tip-04", // TIP ULTIMATE 2BA 40本
+    level: null,
+    createdAt: new Date("2026-09-09T20:40:00+09:00"),
+  },
+  {
+    id: "sample-setting-45",
+    userId: youchan,
+    title: "【サンプル】ストレートで始めやすいセッティング",
+    description:
+      "始めたばかりの頃に、癖の少ない形で選んだ一本です。一体型フライトなのでシャフトとの組み合わせに悩まず、投げることに集中できます。",
+    image: { fileName: "sample-setting-45.jpeg", uuid: "f7a3ec06-e219-49c3-a7e9-e4231c83a4e5" },
+    barrelId: "seed-barrel-07", // Raise Bシリーズ GR 2BA
+    shaftId: null,
+    flightId: "seed-flight-09", // K-FLEX JAPAN LIMITED EDITION 2026 シェイプ ブルー 26.0mm(一体型)
+    tipId: "seed-tip-05", // CRYO TIP 2BA 30本
+    level: "BEGINNER",
+    createdAt: new Date("2026-09-10T12:55:00+09:00"),
+  },
+  {
+    id: "sample-setting-46",
+    userId: yuuto,
+    title: "【サンプル】重めのストレートをフィット規格で組み直す",
+    description:
+      "前は一体型フライトで使っていたバレルを、フィット規格のシャフトとフライトで組み直しました。シャフトの長さを選べるので、自分の投げ方に合わせて細かく調整できます。",
+    image: { fileName: "sample-setting-46.jpeg", uuid: "26b8c8cd-7cb5-4599-b115-d0e4c8bf800a" },
+    barrelId: "seed-barrel-08", // SIRIUS G4 21g JAPAN 2025 CONSTRUCTORS CHAMPION 2BA 林雄太選手モデル
+    shaftId: "seed-shaft-05", // Fit Shaft GEAR ハイブリッド ロック クリア 24.0mm
+    flightId: "seed-flight-08", // Fit Flight AIR スタンダード グリーン 無地
+    tipId: "seed-tip-02", // Short Lippoint 2BA 50本
+    level: "ADVANCED",
+    createdAt: new Date("2026-09-11T22:20:00+09:00"),
+  },
+  {
+    id: "sample-setting-47",
+    userId: takkun,
+    title: "【サンプル】短いトルピードで始める入門セッティング",
+    description:
+      "始めたばかりで、短めのバレルのほうが持ちやすく感じました。手元に重さがあるので、力を入れなくても前に飛んでいってくれます。",
+    image: { fileName: "sample-setting-47.jpeg", uuid: "9c1a44c6-c3a2-4ae0-b1db-b4ce17e67af6" },
+    barrelId: "seed-barrel-10", // A-FLOW SILVER LINE EARTH TURQUOISE 2BA
+    shaftId: "seed-shaft-03", // PRO GRIP SHAFT ブラック 19.5mm
+    flightId: "seed-flight-07", // MIRARCH×L-Flight PRO MAIKA MORIMOTO ver.1 シェイプ ディープパープル
+    tipId: "seed-tip-01", // Premium Lip point 2BA 30本
+    level: "BEGINNER",
+    createdAt: new Date("2026-09-12T19:10:00+09:00"),
+  },
+  {
+    id: "sample-setting-48",
+    userId: ponzu,
+    title: "【サンプル】一体型シェイプで飛びの軌道を整える",
+    description:
+      "シェイプ形状の一体型フライトに替えて、飛ぶときの軌道を整えました。シャフト部分の長さが違うものを試して、いちばん安定したものを使っています。",
+    image: { fileName: "sample-setting-48.jpeg", uuid: "ec652f32-8482-4808-8b77-c9993045f4fa" },
+    barrelId: "seed-barrel-09", // ENDEAVOUR G3 2BA 佐藤かす美選手モデル
+    shaftId: null,
+    flightId: "seed-flight-09", // K-FLEX JAPAN LIMITED EDITION 2026 シェイプ ブルー 26.0mm(一体型)
+    tipId: "seed-tip-03", // FIT POINT PLUS 2.0 2BA 60本
+    level: "ADVANCED",
+    createdAt: new Date("2026-09-13T13:20:00+09:00"),
+  },
+  {
+    id: "sample-setting-49",
+    userId: youchan,
+    title: "【サンプル】練習用の一本を試合用に組み直した構成",
+    description:
+      "練習で使っていたバレルを、シェイプのフライトに替えて試合用に組み直しました。フライトを替えただけで矢の入り方が変わり、細かい調整の大切さを感じています。",
+    image: null,
+    barrelId: "seed-barrel-01", // DISCOVERY LABEL Jeff Smith 2BA
+    shaftId: "seed-shaft-03", // PRO GRIP SHAFT ブラック 19.5mm
+    flightId: "seed-flight-07", // MIRARCH×L-Flight PRO MAIKA MORIMOTO ver.1 シェイプ ディープパープル
+    tipId: "seed-tip-02", // Short Lippoint 2BA 50本
+    level: "ADVANCED",
+    createdAt: new Date("2026-09-14T21:30:00+09:00"),
+  },
+  {
+    id: "sample-setting-50",
+    userId: misakichi,
+    title: "【サンプル】エイト規格のスリムで矢を詰めやすく",
+    description:
+      "スリムのフライトにして、矢が並んでも次の一本が入りやすくなりました。使ってみるとフライトが外れることがほとんどなく、練習のテンポも崩れません。",
+    image: { fileName: "sample-setting-50.jpeg", uuid: "f67862c3-34cd-4a19-b740-b618918d61cc" },
+    barrelId: "seed-barrel-04", // Mao ver.5 2BA 18g Cherry Red
+    shaftId: "seed-shaft-04", // 8FLIGHT シャフト レギュラー FIXED ホワイト 29.5mm
+    flightId: "seed-flight-04", // 8FLIGHT スリム
+    tipId: "seed-tip-04", // TIP ULTIMATE 2BA 40本
+    level: "INTERMEDIATE",
+    createdAt: new Date("2026-09-15T20:05:00+09:00"),
+  },
+  {
+    id: "sample-setting-51",
+    userId: ponzu,
+    title: "【サンプル】重めのバレルを細身のシャフトで整えた構成",
+    description:
+      "重めのバレルに細身のシャフトを合わせ、後ろが重くなりすぎないように整えました。シェイプのフライトとの組み合わせで、飛びの角度が安定しています。",
+    image: { fileName: "sample-setting-51.jpeg", uuid: "76932537-2e7e-43ba-ab9d-e15f06065b48" },
+    barrelId: "seed-barrel-08", // SIRIUS G4 21g JAPAN 2025 CONSTRUCTORS CHAMPION 2BA 林雄太選手モデル
+    shaftId: "seed-shaft-01", // L-SHaft Carbon ロック スリム 37.0mm
+    flightId: "seed-flight-07", // MIRARCH×L-Flight PRO MAIKA MORIMOTO ver.1 シェイプ ディープパープル
+    tipId: "seed-tip-02", // Short Lippoint 2BA 50本
+    level: "ADVANCED",
+    createdAt: new Date("2026-09-16T12:30:00+09:00"),
+  },
+  {
+    id: "sample-setting-52",
+    userId: youchan,
+    title: "【サンプル】トルピードで手元を安定させる入門用",
+    description:
+      "始めたばかりで手元がぶれやすかったので、重さが手元に寄った形を選びました。フィット規格のフライトは付け外しが楽で、扱いに迷いません。",
+    image: { fileName: "sample-setting-52.jpeg", uuid: "b05565a0-0e7c-4b19-8b1a-a775c9f93fe4" },
+    barrelId: "seed-barrel-10", // A-FLOW SILVER LINE EARTH TURQUOISE 2BA
+    shaftId: "seed-shaft-05", // Fit Shaft GEAR ハイブリッド ロック クリア 24.0mm
+    flightId: "seed-flight-08", // Fit Flight AIR スタンダード グリーン 無地
+    tipId: "seed-tip-01", // Premium Lip point 2BA 30本
+    level: "BEGINNER",
+    createdAt: new Date("2026-09-17T22:45:00+09:00"),
+  },
+  {
+    id: "sample-setting-53",
+    userId: misakichi,
+    title: "【サンプル】ストレートのブラスでチップを替えてみた",
+    description:
+      "前に組んだ練習用のセッティングで、チップだけを替えてみました。刺さり方の感触が少し変わり、始めたばかりでも違いがわかっておもしろいです。",
+    image: null,
+    barrelId: "seed-barrel-06", // ZONE BRASS mHz-2 2BA グリーン
+    shaftId: null,
+    flightId: "seed-flight-02", // GAME OVER K-FLEX スタンダード ブラック 26.0mm(一体型)
+    tipId: "seed-tip-03", // FIT POINT PLUS 2.0 2BA 60本
+    level: "BEGINNER",
+    createdAt: new Date("2026-09-18T19:40:00+09:00"),
+  },
+  {
+    id: "sample-setting-54",
+    userId: yuuto,
+    title: "【サンプル】グリップ位置が迷わないくぼみ形状",
+    description:
+      "狙いを付けるまでの手順がシンプルになりました。くぼみに指を合わせるだけで持ち方が決まり、一体型のフライトなので組み合わせに悩むこともありません。",
+    image: { fileName: "sample-setting-54.jpeg", uuid: "42cf570c-2ddd-404f-a5c2-21ada491f4b2" },
+    barrelId: "seed-barrel-13", // UNITE SHRIKE 2BA
+    shaftId: null,
+    flightId: "seed-flight-09", // K-FLEX JAPAN LIMITED EDITION 2026 シェイプ ブルー 26.0mm(一体型)
+    tipId: "seed-tip-02", // Short Lippoint 2BA 50本
+    level: "INTERMEDIATE",
+    createdAt: new Date("2026-09-19T13:50:00+09:00"),
+  },
+  {
+    id: "sample-setting-55",
+    userId: takkun,
+    title: "【サンプル】砲弾型を友達に貸す用に組み直した",
+    description:
+      "前に組んだ砲弾型のバレルを、ダーツを始めたばかりの友達に貸すために組み直しました。フライトをスタンダードに替えたら飛びがゆったりして、友達にも投げやすいと言ってもらえました。",
+    image: { fileName: "sample-setting-55.jpeg", uuid: "e0b7a597-5b2b-4720-ba95-032dfc69e79f" },
+    barrelId: "seed-barrel-12", // TRIPLEIGHT TRUE BLUE2 2BA 鈴木さつき選手モデル
+    shaftId: "seed-shaft-02", // Fit Shaft COLOR Carbon ノーマル スピン 24.0mm
+    flightId: "seed-flight-08", // Fit Flight AIR スタンダード グリーン 無地
+    tipId: "seed-tip-03", // FIT POINT PLUS 2.0 2BA 60本
+    level: "BEGINNER",
+    createdAt: new Date("2026-09-20T21:20:00+09:00"),
+  },
+  {
+    id: "sample-setting-56",
+    userId: misakichi,
+    title: "【サンプル】小さめのフライトで矢速を上げた試合用",
+    description:
+      "小さめのフライトと細身のシャフトで、大会に向けて矢速を上げました。飛びが速くなった分、リリースの細かなずれも出やすいので、投げ込みで合わせています。",
+    image: null,
+    barrelId: "seed-barrel-11", // A-FLOW OBSIDIAN LINE Coral 2BA 21g 阿嘉紗香選手モデル
+    shaftId: "seed-shaft-01", // L-SHaft Carbon ロック スリム 37.0mm
+    flightId: "seed-flight-01", // L-Flight PRO DYNASTY Sachika ver.1 スモール
+    tipId: "seed-tip-01", // Premium Lip point 2BA 30本
+    level: "ADVANCED",
+    createdAt: new Date("2026-09-21T20:50:00+09:00"),
+  },
+  {
+    id: "sample-setting-57",
+    userId: yuuto,
+    title: "【サンプル】癖の少ないストレートで始める一本",
+    description:
+      "始めたばかりの人でも持ちやすい、癖の少ない形を選びました。スピンシャフトで矢同士が当たっても弾かれにくく、安心して練習できます。",
+    image: { fileName: "sample-setting-57.jpeg", uuid: "5e3807c6-0b81-49f1-9aac-1d604abff50d" },
+    barrelId: "seed-barrel-03", // KATANA Houju 2BA
+    shaftId: "seed-shaft-02", // Fit Shaft COLOR Carbon ノーマル スピン 24.0mm
+    flightId: "seed-flight-03", // Fit Flight AIR × Ami Komiyama ver.4
+    tipId: "seed-tip-03", // FIT POINT PLUS 2.0 2BA 60本
+    level: "BEGINNER",
+    createdAt: new Date("2026-09-22T12:05:00+09:00"),
+  },
+  {
+    id: "sample-setting-58",
+    userId: youchan,
+    title: "【サンプル】短めのストレートを大会用に仕上げる",
+    description:
+      "短めのバレルにティアドロップのフライトを合わせて、大会用に仕上げました。スピンシャフトの回り方まで確かめて、緊張した場面でも同じ飛びになるようにしています。",
+    image: { fileName: "sample-setting-58.jpeg", uuid: "ace0bd09-a3a2-44fb-9402-59de7d5b5a22" },
+    barrelId: "seed-barrel-09", // ENDEAVOUR G3 2BA 佐藤かす美選手モデル
+    shaftId: "seed-shaft-02", // Fit Shaft COLOR Carbon ノーマル スピン 24.0mm
+    flightId: "seed-flight-05", // Fit Flight AIR × 鎌田恋 ver.2 ティアドロップ クリア
+    tipId: "seed-tip-05", // CRYO TIP 2BA 30本
+    level: "ADVANCED",
+    createdAt: new Date("2026-09-23T22:00:00+09:00"),
+  },
+  {
+    id: "sample-setting-59",
+    userId: takkun,
+    title: "【サンプル】ストレートをエイト規格で細かく合わせる",
+    description:
+      "エイトのシャフトとスリムのフライトに替えて、自分の投げ方に合うまで何度も投げ込みました。狙いに向かって鋭く入っていく感覚が気に入っています。",
+    image: { fileName: "sample-setting-59.jpeg", uuid: "aa1f757c-b119-48a7-8999-e4ac4181a79b" },
+    barrelId: "seed-barrel-02", // ASTRA DARTS DRAGOON4 2BA
+    shaftId: "seed-shaft-04", // 8FLIGHT シャフト レギュラー FIXED ホワイト 29.5mm
+    flightId: "seed-flight-04", // 8FLIGHT スリム
+    tipId: "seed-tip-01", // Premium Lip point 2BA 30本
+    level: "ADVANCED",
+    createdAt: new Date("2026-09-24T19:25:00+09:00"),
+  },
+  {
+    id: "sample-setting-60",
+    userId: ponzu,
+    title: "【サンプル】ストレートのブラスで気軽に練習",
+    description:
+      "友達に誘われて始めたので、まずは手頃なブラスのバレルにしました。フライトを差し込むだけで付けられて、準備に手間取らないのが助かっています。",
+    image: { fileName: "sample-setting-60.jpeg", uuid: "7ae7800c-0a66-4ffc-84e7-43d768d02ed3" },
+    barrelId: "seed-barrel-06", // ZONE BRASS mHz-2 2BA グリーン
+    shaftId: "seed-shaft-05", // Fit Shaft GEAR ハイブリッド ロック クリア 24.0mm
+    flightId: "seed-flight-03", // Fit Flight AIR × Ami Komiyama ver.4
+    tipId: "seed-tip-04", // TIP ULTIMATE 2BA 40本
+    level: "BEGINNER",
+    createdAt: new Date("2026-09-25T13:10:00+09:00"),
   },
 ];
