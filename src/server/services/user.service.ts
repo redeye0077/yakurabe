@@ -10,9 +10,9 @@ const SAMPLE_USER_EMAIL_VERIFIED_AT = new Date("2026-10-01T00:00:00.000Z");
 export const UserService = {
   /**
    * Seed専用。サンプルセッティングの投稿者として、ログインできないユーザーを固定idで作る。
-   * 更新時もパスワードを上書きするため、Seedを再実行すればログインできない状態に戻る。
+   * 更新時もパスワードと createdAt を上書きするため、Seedを再実行すればログインできない状態・固定の登録日時に戻る。
    */
-  async upsertSampleUser(id: string, data: { email: string; username: string }) {
+  async upsertSampleUser(id: string, data: { email: string; username: string; createdAt: Date }) {
     // メールが外部に配送されないよう、予約ドメイン(.invalid)のアドレスに限る
     if (!data.email.endsWith(".invalid")) {
       throw new ValidationError("サンプルユーザーのメールアドレスは .invalid ドメインにしてください");

@@ -16,10 +16,11 @@ beforeEach(() => {
 });
 
 describe("UserService.upsertSampleUser", () => {
-    it("ログインできないpasswordHashと認証済みの日時を付けて、固定idでupsertする", async () => {
+    it("ログインできないpasswordHashと認証済みの日時を付け、指定した createdAt のまま固定idでupsertする", async () => {
         await UserService.upsertSampleUser("sample-user-01", {
             email: "sample-user-01@yakurabe.invalid",
             username: "サンプルユーザー",
+            createdAt: new Date("2026-08-20T12:00:00+09:00"),
         });
 
         expect(mockedUpsert).toHaveBeenCalledWith("sample-user-01", {
@@ -27,6 +28,7 @@ describe("UserService.upsertSampleUser", () => {
             username: "サンプルユーザー",
             passwordHash: LOGIN_DISABLED_PASSWORD_HASH,
             emailVerified: new Date("2026-10-01T00:00:00.000Z"),
+            createdAt: new Date("2026-08-20T12:00:00+09:00"),
         });
     });
 
@@ -35,6 +37,7 @@ describe("UserService.upsertSampleUser", () => {
             UserService.upsertSampleUser("sample-user-01", {
                 email: "sample@example.com",
                 username: "サンプルユーザー",
+                createdAt: new Date("2026-08-20T12:00:00+09:00"),
             })
         ).rejects.toThrow(ValidationError);
         expect(mockedUpsert).not.toHaveBeenCalled();

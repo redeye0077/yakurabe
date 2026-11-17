@@ -18,7 +18,7 @@ export const userRepository = {
     });
   },
 
-  // Seed専用。固定idで作成し、同じidがあれば同じ内容で更新する
+  // Seed専用。固定idで作成し、同じidがあれば同じ内容で更新する(createdAt も上書きする)
   async upsert(
     id: string,
     data: {
@@ -26,6 +26,7 @@ export const userRepository = {
       passwordHash: string;
       username: string;
       emailVerified: Date | null;
+      createdAt: Date;
     }
   ) {
     return prisma.user.upsert({
