@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { TipThreadSize } from "@/schemas/tip";
 import { seedBarrels, seedFlights, seedShafts, seedTips } from "./parts";
@@ -14,6 +16,10 @@ const TIP_THREAD = toMap(seedTips, (t) => t.threadSize);
 const SHAFT_SYSTEM = toMap(seedShafts, (s) => s.flightSystem);
 // null はシャフト一体型(規格を持たない)。成型で規格が抜けていれば undefined になり、テストで落ちる
 const FLIGHT_SYSTEM = toMap(seedFlights, (f) => (f.flightType === "SHAFT_INTEGRATED" ? null : f.flightSystem));
+
+// Seed が画像を読み込むディレクトリ(seed.ts の SEED_IMAGES_DIR と同じ場所)
+const SEED_IMAGES_DIR = join(__dirname, "..", "seed-images");
+const settingsWithImage = sampleSettings.flatMap((s) => (s.image ? [{ id: s.id, fileName: s.image.fileName }] : []));
 
 const SAMPLE_USER_ID_LIST: string[] = Object.values(SAMPLE_USER_IDS);
 
@@ -74,5 +80,7 @@ describe("サンプルセッティングの Seed データ", () => {
     }
   });
 
-  it.todo("画像ありのサンプルは prisma/seed-images/ にファイルがある");
+  it.each(settingsWithImage)("$id: 画像ファイル($fileName)が prisma/seed-images/ にある", ({ fileName }) => {
+    expect(existsSync(join(SEED_IMAGES_DIR, fileName))).toBe(true);
+  });
 });
