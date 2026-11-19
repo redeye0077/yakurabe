@@ -1,4 +1,5 @@
 import type { SettingLevel } from "@/schemas/setting-level";
+import type { SettingDiff } from "@/lib/setting-compare";
 
 // 一覧・トップの新着で表示するセッティング
 export type SettingListItemDto = {
@@ -23,6 +24,34 @@ export type SettingListPageDto = {
   page: number;
   pageSize: number;
   totalPages: number;
+};
+
+// 比較ページで表示するパーツ。同じ/違うの判定に使うため id を含める
+export type SettingComparePartDto = {
+  id: string;
+  name: string;
+  price: number; // 円
+};
+
+// 比較ページで表示するセッティング1件
+export type SettingCompareItemDto = {
+  id: string;
+  title: string;
+  level: SettingLevel | null; // 未設定なら null
+  imageUrl: string | null; // 表示用 URL。未設定なら画面側で DartMark を表示する
+  barrel: SettingComparePartDto & { weight: number }; // weight は g。重量はバレル重量を指す
+  shaft: SettingComparePartDto | null; // シャフト一体型フライトの場合は null
+  flight: SettingComparePartDto;
+  tip: SettingComparePartDto;
+  totalPrice: number; // 円。保存せず取得時に計算する
+  userName: string;
+  createdAt: string; // ISO文字列
+};
+
+// 比較ページの表示内容。settings は URL の ids と同じ順(A, B)。diff は B − A
+export type SettingCompareDto = {
+  settings: [SettingCompareItemDto, SettingCompareItemDto];
+  diff: SettingDiff;
 };
 
 // 編集フォームの初期値。投稿者は Service で確認済みのため含めない

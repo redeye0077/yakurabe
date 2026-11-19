@@ -1,5 +1,6 @@
 import {
   CreateSettingRecordInput,
+  SettingCompareRecord,
   SettingListItemRecord,
   SettingRepository,
   UpdateSettingRecordInput,
@@ -11,6 +12,8 @@ import { ShaftRepository } from "@/server/repositories/shaft.repository";
 import { FlightRepository } from "@/server/repositories/flight.repository";
 import { TipRepository } from "@/server/repositories/tip.repository";
 import {
+  SettingCompareDto,
+  SettingCompareItemDto,
   SettingEditDto,
   SettingImageUploadDto,
   SettingListItemDto,
@@ -23,6 +26,7 @@ import {
 } from "@/server/errors/setting.error";
 import { ValidationError } from "@/server/errors/validation.error";
 import { calcTotalPrice } from "@/lib/setting-price";
+import { calcSettingDiff } from "@/lib/setting-compare";
 import {
   buildSettingImageKey,
   detectImageType,
@@ -61,6 +65,23 @@ function toListItemDto(setting: SettingListItemRecord): SettingListItemDto {
     flightName: setting.flight.name,
     tipName: setting.tip.name,
     barrelWeight: setting.barrel.weight,
+    totalPrice: calcTotalPrice(setting),
+    userName: setting.user.username,
+    createdAt: setting.createdAt.toISOString(),
+  };
+}
+
+// 比較ページ用のDTOに変換する。合計価格は保存していないので、ここで算出する
+function toCompareItemDto(setting: SettingCompareRecord): SettingCompareItemDto {
+  return {
+    id: setting.id,
+    title: setting.title,
+    level: setting.level,
+    imageUrl: toImageUrl(setting.imageKey),
+    barrel: setting.barrel,
+    shaft: setting.shaft,
+    flight: setting.flight,
+    tip: setting.tip,
     totalPrice: calcTotalPrice(setting),
     userName: setting.user.username,
     createdAt: setting.createdAt.toISOString(),
@@ -198,6 +219,30 @@ export const SettingService = {
     const settings = await SettingRepository.findByUserId(options.userId);
 
     return settings.map(toListItemDto);
+  },
+
+  /**
+   * 比較ページ用。ids の順(A, B)に並べた2件と、差分(B − A)を返す。
+   * Repository は並び順を保証しないため、ids の順に並べ直す。
+   * 同じ id が2つ渡された場合と、どちらかが見つからない場合は SettingNotFoundError を throw する
+   */
+  async listForCompare(ids: [string, string]): Promise<SettingCompareDto> {
+    // 同じセッティング同士は比較にならないため、取得せずに弾く
+    if (ids[0] === ids[1]) {
+      throw new SettingNotFoundError();
+    }
+
+    const settings = await SettingRepository.findByIds(ids);
+    const a = settings.find((setting) => setting.id === ids[0]);
+    const b = settings.find((setting) => setting.id === ids[1]);
+    if (!a || !b) {
+      throw new SettingNotFoundError();
+    }
+
+    return {
+      settings: [toCompareItemDto(a), toCompareItemDto(b)],
+      diff: calcSettingDiff(a, b),
+    };
   },
 
   /**

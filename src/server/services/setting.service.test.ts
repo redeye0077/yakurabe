@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CreateSettingServiceInput, SettingService } from "@/server/services/setting.service";
 import {
+    SettingCompareRecord,
     SettingEditRecord,
     SettingListItemRecord,
     SettingRepository,
@@ -27,6 +28,7 @@ vi.mock("@/server/repositories/setting.repository", () => ({
         countForList: vi.fn(),
         findPaged: vi.fn(),
         findByUserId: vi.fn(),
+        findByIds: vi.fn(),
         findOwnerById: vi.fn(),
         findById: vi.fn(),
         create: vi.fn(),
@@ -58,6 +60,7 @@ const mockedFindLatest = vi.mocked(SettingRepository.findLatest);
 const mockedCountForList = vi.mocked(SettingRepository.countForList);
 const mockedFindPaged = vi.mocked(SettingRepository.findPaged);
 const mockedFindByUserId = vi.mocked(SettingRepository.findByUserId);
+const mockedFindByIds = vi.mocked(SettingRepository.findByIds);
 const mockedCreate = vi.mocked(SettingRepository.create);
 const mockedUpsert = vi.mocked(SettingRepository.upsert);
 const mockedFindOwnerById = vi.mocked(SettingRepository.findOwnerById);
@@ -309,6 +312,133 @@ describe("SettingService.listLatest", () => {
         const [result] = await SettingService.listLatest();
 
         expect(result.imageUrl).toBe(IMAGE_URL);
+    });
+});
+
+function createCompareRecord(overrides: Partial<SettingCompareRecord> = {}): SettingCompareRecord {
+    return {
+        id: "setting-a",
+        title: "セッティングA",
+        level: null,
+        imageKey: IMAGE_KEY,
+        createdAt: new Date("2026-10-01T00:00:00.000Z"),
+        user: { username: "テストユーザー" },
+        barrel: { id: "barrel-1", name: "テストバレル", weight: 18, price: 17600 },
+        shaft: { id: "shaft-1", name: "テストシャフト", price: 4180 },
+        flight: { id: "flight-1", name: "テストフライト", price: 1080 },
+        tip: { id: "tip-1", name: "テストチップ", price: 770 },
+        ...overrides,
+    };
+}
+
+describe("SettingService.listForCompare", () => {
+    // B はバレルだけ違い、A より 2.5g 重く 2200 円高い
+    const recordA = createCompareRecord();
+    const recordB = createCompareRecord({
+        id: "setting-b",
+        title: "セッティングB",
+        imageKey: null,
+        user: { username: "別のユーザー" },
+        barrel: { id: "barrel-2", name: "別のバレル", weight: 20.5, price: 19800 },
+    });
+
+    it("ids を Repository に渡し、比較用の DTO と差分を返す", async () => {
+        mockedFindByIds.mockResolvedValue([recordA, recordB]);
+
+        const result = await SettingService.listForCompare(["setting-a", "setting-b"]);
+
+        expect(mockedFindByIds).toHaveBeenCalledWith(["setting-a", "setting-b"]);
+        expect(result.settings[0]).toEqual({
+            id: "setting-a",
+            title: "セッティングA",
+            level: null,
+            imageUrl: IMAGE_URL,
+            barrel: { id: "barrel-1", name: "テストバレル", weight: 18, price: 17600 },
+            shaft: { id: "shaft-1", name: "テストシャフト", price: 4180 },
+            flight: { id: "flight-1", name: "テストフライト", price: 1080 },
+            tip: { id: "tip-1", name: "テストチップ", price: 770 },
+            totalPrice: 17600 + 4180 + 1080 + 770,
+            userName: "テストユーザー",
+            createdAt: "2026-10-01T00:00:00.000Z",
+        });
+        expect(result.settings[1]).toMatchObject({ id: "setting-b", totalPrice: 19800 + 4180 + 1080 + 770 });
+    });
+
+    it("Repository が逆順で返しても、ids の順(A, B)に並べる", async () => {
+        mockedFindByIds.mockResolvedValue([recordB, recordA]);
+
+        const result = await SettingService.listForCompare(["setting-a", "setting-b"]);
+
+        expect(result.settings.map((setting) => setting.id)).toEqual(["setting-a", "setting-b"]);
+    });
+
+    it("差分は A → B の向き(B − A)で計算する", async () => {
+        mockedFindByIds.mockResolvedValue([recordA, recordB]);
+
+        const result = await SettingService.listForCompare(["setting-a", "setting-b"]);
+
+        expect(result.diff).toEqual({
+            barrelWeightDiff: 2.5,
+            totalPriceDiff: 2200,
+            sameParts: { barrel: false, shaft: true, flight: true, tip: true },
+        });
+    });
+
+    it("ids を入れ替えると、並びも差分の向きも入れ替わる", async () => {
+        mockedFindByIds.mockResolvedValue([recordA, recordB]);
+
+        const result = await SettingService.listForCompare(["setting-b", "setting-a"]);
+
+        expect(result.settings.map((setting) => setting.id)).toEqual(["setting-b", "setting-a"]);
+        expect(result.diff).toMatchObject({ barrelWeightDiff: -2.5, totalPriceDiff: -2200 });
+    });
+
+    it("imageUrl は保存先キーから組み立て、画像が未設定なら null にする", async () => {
+        mockedFindByIds.mockResolvedValue([recordA, recordB]);
+
+        const result = await SettingService.listForCompare(["setting-a", "setting-b"]);
+
+        expect(result.settings[0].imageUrl).toBe(IMAGE_URL);
+        expect(result.settings[1].imageUrl).toBeNull();
+    });
+
+    it("シャフトが null(一体型フライト)なら shaft を null にし、合計価格にシャフト分を含めない", async () => {
+        const integrated = createCompareRecord({
+            id: "setting-b",
+            shaft: null,
+            flight: { id: "flight-2", name: "一体型フライト", price: 1980 },
+        });
+        mockedFindByIds.mockResolvedValue([recordA, integrated]);
+
+        const result = await SettingService.listForCompare(["setting-a", "setting-b"]);
+
+        expect(result.settings[1].shaft).toBeNull();
+        expect(result.settings[1].totalPrice).toBe(17600 + 1980 + 770);
+    });
+
+    it("1件しか見つからなければ SettingNotFoundError を throw する", async () => {
+        mockedFindByIds.mockResolvedValue([recordA]);
+
+        await expect(SettingService.listForCompare(["setting-a", "setting-b"])).rejects.toBeInstanceOf(
+            SettingNotFoundError,
+        );
+    });
+
+    it("同じ id が2つ渡されたら、取得せずに SettingNotFoundError を throw する", async () => {
+        mockedFindByIds.mockResolvedValue([recordA]);
+
+        await expect(SettingService.listForCompare(["setting-a", "setting-a"])).rejects.toBeInstanceOf(
+            SettingNotFoundError,
+        );
+        expect(mockedFindByIds).not.toHaveBeenCalled();
+    });
+
+    it("0件しか見つからなければ SettingNotFoundError を throw する", async () => {
+        mockedFindByIds.mockResolvedValue([]);
+
+        await expect(SettingService.listForCompare(["setting-a", "setting-b"])).rejects.toBeInstanceOf(
+            SettingNotFoundError,
+        );
     });
 });
 

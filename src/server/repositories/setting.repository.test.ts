@@ -271,6 +271,30 @@ describe("SettingRepository.upsert", () => {
     });
 });
 
+describe("SettingRepository.findByIds", () => {
+    it("指定した id のセッティングを、比較に必要な項目(パーツの id を含む)だけ取得する", async () => {
+        mockedFindMany.mockResolvedValue([]);
+
+        await SettingRepository.findByIds(["setting-a", "setting-b"]);
+
+        expect(mockedFindMany).toHaveBeenCalledWith({
+            where: { id: { in: ["setting-a", "setting-b"] } },
+            select: {
+                id: true,
+                title: true,
+                level: true,
+                imageKey: true,
+                createdAt: true,
+                user: { select: { username: true } },
+                barrel: { select: { id: true, name: true, weight: true, price: true } },
+                shaft: { select: { id: true, name: true, price: true } },
+                flight: { select: { id: true, name: true, price: true } },
+                tip: { select: { id: true, name: true, price: true } },
+            },
+        });
+    });
+});
+
 describe("SettingRepository.findOwnerById", () => {
     it("idで検索し、投稿者のidだけを取得する", async () => {
         mockedFindUnique.mockResolvedValue(null);
