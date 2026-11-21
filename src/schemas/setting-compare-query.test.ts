@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSettingCompareQuery } from "@/schemas/setting-compare-query";
+import { buildSettingCompareHref, parseSettingCompareQuery } from "@/schemas/setting-compare-query";
 
 describe("parseSettingCompareQuery", () => {
     it("「,」区切りの2件なら、その順で ids を返す", () => {
@@ -40,5 +40,21 @@ describe("parseSettingCompareQuery", () => {
 
     it("ids が配列(?ids=a&ids=b)なら ok: false", () => {
         expect(parseSettingCompareQuery({ ids: ["setting-a", "setting-b"] })).toEqual({ ok: false });
+    });
+});
+
+describe("buildSettingCompareHref", () => {
+    it("[A, B] の順で /compare?ids=A,B を作る", () => {
+        expect(buildSettingCompareHref(["setting-b", "setting-a"])).toBe("/compare?ids=setting-b,setting-a");
+    });
+
+    it("作ったリンクのクエリは parseSettingCompareQuery で同じ順の ids に戻る", () => {
+        const href = buildSettingCompareHref(["cmhx1a2b3c4d5e6f7g8h9i0jk", "sample_setting-01"]);
+        const ids = new URL(href, "http://localhost").searchParams.get("ids") ?? undefined;
+
+        expect(parseSettingCompareQuery({ ids })).toEqual({
+            ok: true,
+            ids: ["cmhx1a2b3c4d5e6f7g8h9i0jk", "sample_setting-01"],
+        });
     });
 });

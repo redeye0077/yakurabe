@@ -28,3 +28,9 @@ export function parseSettingCompareQuery(searchParams: SearchParams): SettingCom
   const result = settingCompareIdsSchema.safeParse(searchParams.ids);
   return result.success ? { ok: true, ids: result.data } : { ok: false };
 }
+
+// 比べる2件の id から /compare のリンクを作る。並びは [A, B] の順のまま渡す
+export function buildSettingCompareHref([a, b]: readonly [string, string]): string {
+  // 区切りの「,」はエンコードせず、id だけをエンコードする
+  return `${SETTING_COMPARE_PATH}?ids=${encodeURIComponent(a)},${encodeURIComponent(b)}`;
+}
