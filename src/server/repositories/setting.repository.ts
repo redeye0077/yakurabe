@@ -50,6 +50,22 @@ function buildSettingListWhere(filter: SettingListFilter): Prisma.SettingWhereIn
   return {};
 }
 
+// 比較ページの表示と差分の計算に必要な項目。パーツの同じ/違うを id で判定するため、一覧用の select にパーツの id を足す
+const settingCompareSelect = {
+  id: true,
+  title: true,
+  level: true,
+  imageKey: true,
+  createdAt: true,
+  user: { select: { username: true } },
+  barrel: { select: { id: true, name: true, weight: true, price: true } },
+  shaft: { select: { id: true, name: true, price: true } },
+  flight: { select: { id: true, name: true, price: true } },
+  tip: { select: { id: true, name: true, price: true } },
+} satisfies Prisma.SettingSelect;
+
+export type SettingCompareRecord = Prisma.SettingGetPayload<{ select: typeof settingCompareSelect }>;
+
 // 編集フォームの初期値と、編集前の投稿者の確認に必要な項目
 const settingEditSelect = {
   userId: true,
@@ -135,6 +151,15 @@ export const SettingRepository = {
       where: { userId },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: settingListItemSelect,
+    });
+  },
+
+  // 比較ページ用。指定した id のセッティングを返す。並び順は保証しない(ids の順に並べるのは Service で行う)。
+  // 見つからない id は結果に含まれない
+  async findByIds(ids: readonly string[]) {
+    return prisma.setting.findMany({
+      where: { id: { in: [...ids] } },
+      select: settingCompareSelect,
     });
   },
 
