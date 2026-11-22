@@ -2,6 +2,8 @@ import { connection } from "next/server";
 import { SettingService } from "@/server/services/setting.service";
 import { SettingGrid } from "@/components/features/setting/setting-grid";
 import { SampleImageNote } from "@/components/features/setting/sample-image-note";
+import { CompareToggleButton } from "@/components/features/compare/compare-toggle-button";
+import { CompareBar } from "@/components/features/compare/compare-bar";
 import { PaginationNav, type PaginationNavItem } from "@/components/common/pagination-nav";
 import { buildPageHref, buildPageItems, calcPageRange } from "@/lib/pagination";
 import {
@@ -49,7 +51,11 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         </p>
       )}
       <div className="mt-6">
-        <SettingGrid settings={items} headingLevel={2} />
+        <SettingGrid
+          settings={items}
+          headingLevel={2}
+          renderActions={(setting) => <CompareToggleButton settingId={setting.id} title={setting.title} />}
+        />
       </div>
       {totalPages > 1 && (
         <PaginationNav
@@ -59,6 +65,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           nextHref={page < totalPages ? hrefFor(page + 1) : null}
         />
       )}
+      {/* 比較するセッティングを選んでいるときだけ、下部に固定のバーと、その高さ分の余白を出す */}
+      <CompareBar />
     </section>
   );
 }

@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import SettingsPage from "@/app/(main)/settings/page";
 import { SettingService } from "@/server/services/setting.service";
 import type { SettingListItemDto, SettingListPageDto } from "@/server/dto/setting.dto";
 import type { SearchParams } from "@/schemas/setting-list-query";
+import { useSettingCompareStore } from "@/stores/setting-compare-store";
 
 vi.mock("next/server", () => ({
     connection: vi.fn(() => Promise.resolve()),
@@ -51,6 +53,8 @@ function renderPage(searchParams: SearchParams = {}) {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    // 比較の選択はモジュールに1つの store に残るため、テストごとに初期状態に戻す
+    useSettingCompareStore.setState(useSettingCompareStore.getInitialState(), true);
 });
 
 describe("SettingsPage", () => {
@@ -158,5 +162,90 @@ describe("SettingsPage", () => {
         expect(screen.getByText("まだセッティングが投稿されていません")).toBeInTheDocument();
         expect(screen.queryByText(/^全\d+件中/)).not.toBeInTheDocument();
         expect(screen.queryByRole("navigation", { name: "ページ" })).not.toBeInTheDocument();
+    });
+
+    describe("比較", () => {
+        const threeSettings = () =>
+            makePage({
+                items: [
+                    makeSetting("setting-1", "セッティング1"),
+                    makeSetting("setting-2", "セッティング2"),
+                    makeSetting("setting-3", "セッティング3"),
+                ],
+                total: 3,
+            });
+
+        function getCard(title: string): HTMLElement {
+            const card = screen.getByRole("heading", { level: 2, name: title }).closest("article");
+            if (!card) throw new Error(`${title} のカードが見つかりません`);
+            return card;
+        }
+
+        it("各カードに「比較に追加」ボタンを出し、選ぶまではバーを出さない", async () => {
+            vi.mocked(SettingService.listPaged).mockResolvedValue(threeSettings());
+
+            render(await renderPage());
+
+            for (const title of ["セッティング1", "セッティング2", "セッティング3"]) {
+                expect(within(getCard(title)).getByRole("button", { name: "比較に追加" })).toBeEnabled();
+            }
+            expect(screen.queryByRole("region", { name: "比較するセッティング" })).not.toBeInTheDocument();
+        });
+
+        it("2件選ぶと残りのカードのボタンを disabled にし、バーに選んだ順のタイトルと /compare へのリンクを出す", async () => {
+            const user = userEvent.setup();
+            vi.mocked(SettingService.listPaged).mockResolvedValue(threeSettings());
+
+            render(await renderPage());
+
+            await user.click(within(getCard("セッティング3")).getByRole("button", { name: "比較に追加" }));
+            await user.click(within(getCard("セッティング1")).getByRole("button", { name: "比較に追加" }));
+
+            expect(within(getCard("セッティング2")).getByRole("button", { name: "比較に追加" })).toBeDisabled();
+            expect(within(getCard("セッティング1")).getByRole("button", { name: "比較から外す" })).toBeEnabled();
+            expect(within(getCard("セッティング3")).getByRole("button", { name: "比較から外す" })).toBeEnabled();
+
+            const bar = screen.getByRole("region", { name: "比較するセッティング" });
+            expect(within(bar).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+                "A:セッティング3",
+                "B:セッティング1",
+            ]);
+            expect(within(bar).getByRole("link", { name: "比べる" })).toHaveAttribute(
+                "href",
+                "/compare?ids=setting-3,setting-1",
+            );
+        });
+
+        it("選択中のボタンを押して外すと、ほかのカードのボタンが押せる状態に戻る", async () => {
+            const user = userEvent.setup();
+            vi.mocked(SettingService.listPaged).mockResolvedValue(threeSettings());
+
+            render(await renderPage());
+
+            await user.click(within(getCard("セッティング1")).getByRole("button", { name: "比較に追加" }));
+            await user.click(within(getCard("セッティング2")).getByRole("button", { name: "比較に追加" }));
+            await user.click(within(getCard("セッティング1")).getByRole("button", { name: "比較から外す" }));
+
+            expect(within(getCard("セッティング3")).getByRole("button", { name: "比較に追加" })).toBeEnabled();
+            expect(
+                within(screen.getByRole("region", { name: "比較するセッティング" })).getByRole("link", { name: "比べる" }),
+            ).toHaveAttribute("aria-disabled", "true");
+        });
+
+        it("バーはページネーションより後ろに置き、その前に余白を入れる", async () => {
+            const user = userEvent.setup();
+            vi.mocked(SettingService.listPaged).mockResolvedValue(
+                makePage({ ...threeSettings(), total: 30, totalPages: 3 }),
+            );
+
+            const { container } = render(await renderPage());
+            await user.click(within(getCard("セッティング1")).getByRole("button", { name: "比較に追加" }));
+
+            const nav = screen.getByRole("navigation", { name: "ページ" });
+            const spacer = container.querySelector("[data-compare-bar-spacer]");
+            expect(spacer).not.toBeNull();
+            // 余白がページネーションの後ろにあれば、一番下までスクロールしたときにページネーションがバーに隠れない
+            expect(nav.compareDocumentPosition(spacer as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        });
     });
 });
